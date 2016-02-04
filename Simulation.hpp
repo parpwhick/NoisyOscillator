@@ -23,10 +23,7 @@
 typedef std::array<double, 3> vec;
 
 class Simulation {    
-private:
-    Physical phys;
-    Parameters sim;
-    
+private:   
     
     std::random_device rd;
     std::mt19937 rng{rd()};
@@ -37,13 +34,19 @@ public:
     Simulation();
     ~Simulation();
     
-    void init_state(double T);
+    Physical  phys;
+    Parameters sim;
+    
+    double init_state(double T);
     void trap_freq(double kick, int axis);
-    vec get_omega();
+    const vec & update_omega(double time, vec pos);
+    void update_state(double time);
     double speed();
-    double energy();
+    double update_energy();
     double randn();
     double rand();
+    void read_state();
+
     
     // Statistics of the simulation
     struct {
@@ -53,12 +56,12 @@ public:
     
     vec x;
     vec v;
-    vec omega;
+    vec omega_squared;
+    vec a;
+    double t;
+    vec energies;
     
-    static double energy(vec pos, vec vel, vec w, Physical par);
     
-    
-
 };
 
 

@@ -44,8 +44,8 @@ OBJECTFILES= \
 CFLAGS=
 
 # CC Compiler Flags
-CCFLAGS=
-CXXFLAGS=
+CCFLAGS=-O3
+CXXFLAGS=-O3
 
 # Fortran Compiler Flags
 FFLAGS=
@@ -67,17 +67,17 @@ ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/noisyoscillator: ${OBJECTFILES}
 ${OBJECTDIR}/Simulation.o: Simulation.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/Simulation.o Simulation.cpp
+	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/Simulation.o Simulation.cpp
 
 ${OBJECTDIR}/SimulationParameters.o: SimulationParameters.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/SimulationParameters.o SimulationParameters.cpp
+	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/SimulationParameters.o SimulationParameters.cpp
 
 ${OBJECTDIR}/oscillator.o: oscillator.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/oscillator.o oscillator.cpp
+	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/oscillator.o oscillator.cpp
 
 # Subprojects
 .build-subprojects:

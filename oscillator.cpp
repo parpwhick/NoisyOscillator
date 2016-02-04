@@ -15,12 +15,27 @@
 #include <cstdio>
 #include "Simulation.hpp"
 #include <vector>
+#include <iostream>
 using namespace std;
 
-int main(int argc, char** argv) {
-    Simulation test;
+void run_average(Simulation &sim, int N, double T){
+    double avg_en = 0.0; 
     
-    printf("Hello world\n");
+    for(int i = 0; i < N; i++){
+        avg_en += sim.init_state(T);
+    }
+    avg_en /= N;
+    
+    cout << "Average energy after " << N << " realizations:" << avg_en << endl; 
+}
+
+int main(int argc, char** argv) {
+    Simulation single_ion;
+    
+    single_ion.init_state(1);
+    single_ion.read_state();
+    
+    run_average(single_ion, 100000, 1);
     return 0;    
 }
 

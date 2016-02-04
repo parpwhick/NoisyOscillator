@@ -66,10 +66,13 @@
       <compileType>
         <cTool>
           <developmentMode>5</developmentMode>
+          <warningLevel>2</warningLevel>
         </cTool>
         <ccTool>
           <developmentMode>5</developmentMode>
           <standard>11</standard>
+          <commandLine>-O3</commandLine>
+          <warningLevel>2</warningLevel>
         </ccTool>
         <fortranCompilerTool>
           <developmentMode>5</developmentMode>

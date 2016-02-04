@@ -41,23 +41,43 @@ struct Physical {
     //Distance endcaps to trap center
     double z0 = 4.0 * 0.001;
     
+    // tan(alpha) / x0 parameter, used for the determination of omega_rad
+    double zk;
+    
     //Voltage on the endcaps
     double Uz = 0.16;
 
     //Center of trap along z axis
     double zOffset = 0.0;
+    
+    // Frequency radial (average, in Hz)
+    double omega_rad0;
+    
+    // Frequency axial (average, in Hz)
+    double omega_ax0;
+    
 
+    
     
     void set_dependent_parameters(){        
         using namespace consts;
         double rad_angle = angle / 180. * pi;
         tan_angle = std::tan(rad_angle);
         qDivM = consts::electronCharge / M;
+        zk = tan_angle / x0;
+        
     }
     
     Physical() {        
         using namespace consts;
-        RF_omega = 22.7 * MHz;
+        RF_omega = 2 * pi * 22.7 * MHz;
+        RF_amplitude = std::sqrt(2.0);
+        
+        // Pulse (Frequency) radial (average, in Hz)
+        omega_rad0 = 2 * pi * 0.445 * MHz;
+    
+        // Pulse (Frequency) axial (average, in Hz)
+        omega_ax0  = 2 * pi * 0.3 * MHz;
 
         // detuning of the laser in Hz
         detuning = -consts::gamma;
@@ -95,7 +115,7 @@ public:
         using namespace consts;
 
         // default 10 steps per micromotion oscillation
-        dt = 0.1 / phys.RF_omega;
+        dt = 0.1 / (phys.RF_omega / 2 / pi);
 
         set_dependent_parameters();
     }
