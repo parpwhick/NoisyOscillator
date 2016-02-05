@@ -13,32 +13,65 @@
 
 #include "Simulation.hpp"
 #include "Constants.h"
-#include <cstdio>
 #include <iostream>
 #include <ostream>
 #include <string>
+#include "Utilities.h"
 
-
-const int X = 0;
-const int Y = 1;
-const int Z = 2;
-
-template<typename T> inline T square(const T & x){
-    return x*x;
-}
 
 Simulation::Simulation() : phys(), sim(phys) {
-    printf("Default constructor called\n");
-    printf("dt: %.3g s, gamma: %.3g Hz\n", sim.dt, consts::gamma);
+    std::cerr <<  "Default constructor called\n";
+    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
 }
 
 Simulation::~Simulation() {
-    printf("Deconstructed\n");
 }
 
-void Simulation::trap_freq(double kick, int axis) {
-
+double Simulation::trap_freq(int axis) {
+    using namespace consts;
+    
+    v = {0.0, 0.0, 0.0};
+    x = {0.0, 0.0, 0.0};
+    t = 0.0;
+    update_omega(x);
+    
+    double sigma_x = sqrt(k_B * 1.0 / phys.M / square(omega[axis]));    
+    double kick = sigma_x;
+    x[axis] = kick;    
+    update_state(t);
+    
+    int zero_crossings = 0; 
+    bool inside_threshold = false;
+    double outer_threshold = 0.80 * kick;
+    double inner_threshold = 0.98 * kick;
+    double in_time = 0;
+    double last_time = t;
+    
+    while (t < sim.time_end){
+//        print_state();
+        step();
+        if (x[axis] > inner_threshold && !inside_threshold) {
+            in_time = t;
+            inside_threshold = true;
+        } else if(x[axis] < inner_threshold && inside_threshold){
+            last_time = (t + in_time) / 2;
+        } 
+        
+        if (x[axis] < outer_threshold){
+            if (inside_threshold)
+                zero_crossings += 1;
+            inside_threshold = false;            
+        }
+        
+        if (zero_crossings >= 41)
+            break;
+    }
+    
+    double freq = (zero_crossings-1) / last_time;
+    
+//    std::cerr << "Axis " << axis << " freq: " << freq << ", with crossings " << zero_crossings << std::endl;    
+    return freq;
 }
 
 inline double Simulation::randn() {
@@ -52,9 +85,9 @@ inline double Simulation::rand() {
 double Simulation::init_state(double T) {
     using namespace std;
     using namespace consts;
-    t = 0;
+    t = sim.time_start;
     x = {0.0, 0.0, 0.0};
-    update_omega(t, x);
+    update_omega(x);
     
     phys.T_init = T;
     
@@ -65,80 +98,109 @@ double Simulation::init_state(double T) {
     }
 
     for (int i = 0; i < 3; i++) {
-        // remember that the omega_squared are the micromotion-RMS adjusted frequency,
-        // so they need to be divided by sqrt(2))
-        double sigma_i = sqrt(k_B * T / phys.M / abs(omega_squared[i] / sqrt(2.0)));
+        double sigma_i = sqrt(k_B * T / phys.M / square(omega[i]));
         x[i] = sigma_i * randn();
     }
     
     return update_energy();
 }
 
-inline const vec & Simulation::update_omega(double time, vec pos) {
-    double t = 0.0;
-    double phase = 2 * consts::pi * phys.RF_omega * time + phys.RF_phi;
-    double rfvoltage = phys.RF_amplitude * cos(phase);
-    
+inline const vec & Simulation::update_omega(const vec & pos) {    
     auto omega_x = phys.omega_rad0 / square(1 + pos[Z] * phys.zk);
     auto omega_z = phys.omega_ax0;
-    auto omega_x_t = rfvoltage * omega_x;
-    omega_squared = {square(omega_x_t), -square(omega_x_t), square(omega_z)};
     
-    return omega_squared;
+    // NO MICROMOTION, PONDEROMOTIVE ONLY
+    omega = {omega_x, omega_x, omega_z};
+    
+    return omega;
 }
 
-void Simulation::update_state(double t){
+void Simulation::update_state(double tt){
     // radial potential energy / (M/2)
-    auto e_rad_pot = (abs(omega_squared[X]) * square(x[X]) + abs(omega_squared[Y]) * square(x[Y]));
+    auto e_rad_pot = (square(omega[X]) * square(x[X]) + square(omega[Y]) * square(x[Y]));
     // total radial energy / (M/2)
     auto e_rad = e_rad_pot + square(v[X]) + square(v[Y]);
-    auto e_ax = square(v[Z]) + omega_squared[Z] * square(x[Z]);
+    auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
+    
+    double phase = 2 * consts::pi * phys.RF_omega * tt + phys.RF_phi;
+    double rfvoltage = phys.RF_amplitude * cos(phase);
     
     auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
-    a = { -omega_squared[X] * x[X], // X
-          -omega_squared[Y] * x[Y], // Y
-          -omega_squared[Z] * x[Z] + z_derivative // Z
+    a = { -rfvoltage * square(omega[X]) * x[X], // X
+          +rfvoltage * square(omega[Y]) * x[Y], // Y
+          -square(omega[Z]) * x[Z] + z_derivative // Z
     };
     
     energies = {0.5 * phys.M * e_rad, 0.5 * phys.M * e_ax, 0.5 * phys.M * (e_rad+e_ax)};
 }
 
 double Simulation::update_energy() {
-    update_omega(t, x);
+    update_omega(x);
     update_state(t);
     return energies[2];
-}
-
-inline double module(vec vector) {
-    double m;
-    for (auto & x : vector) {
-        m += x * x;
-    }
-    return std::sqrt(m);
 }
 
 inline double Simulation::speed() {
     return module(v);
 }
 
-template <typename T, std::size_t N>
-std::ostream& operator<< (std::ostream& out, const std::array<T, N>& v) {
-    out << '[';
-    for (int i = 0; i < N; i++)
-        out << v[i] << ", "; 
-    out << "\b\b]";
-  return out;
+
+// Print information about the state in a verbose form
+void Simulation::read_state(std::ostream & out){
+    using namespace std;
+    out << "Time: " << t << ", mass: " << phys.M << endl;
+    out << "Position: " << x << endl;
+    out << "Velocity: " << v << endl;
+    out << "Omegas:   " << omega << endl;
+    out << "Energies: " << energies << ", kb T: " << consts::k_B * phys.T_init << endl;
 }
 
-void Simulation::read_state(){
-    using namespace std;
-    cout << "Time: " << t << ", mass: " << phys.M << endl;
-    cout << "Position: " << x << endl;
-    cout << "Velocity: " << v << endl;
-    cout << "Omegas:   ["; 
-    for(auto om : omega_squared) 
-        cout << sqrt(abs(om)/2) << ", ";
-    cout << "\b\b]" << endl;
-    cout << "Energies: " << energies << ", kb T: " << consts::k_B * phys.T_init << endl;
-    //printf("Position: (%.3g, %.3g, %.3g)\n", x);
+// Print a line brief with the information
+void Simulation::print_state(std::ostream & out){
+//    auto list = ;
+    out << t << " ";
+    for(auto & k  : {x, v, omega,  energies}){
+        for (auto & p : k){
+            out << p << " ";
+        }
+    }
+    out << std::endl; 
+}
+
+//  Step forward of dt by using the Velocity Verlet algorithm
+void Simulation::step(){
+    static double dt = sim.dt;
+    static double dthalf = 0.5 * dt; 
+    
+    //update position
+    for (int i=0; i<3; i++){
+        x[i] += (v[i] + dthalf * a[i]) * dt;
+    }
+    
+    //update acceleration on the new position
+    update_omega(x); //it is already x(t+dt)
+    vec a_old = a;
+    update_state(t+dt);
+    
+    //update speed
+    for (int i=0; i<3; i++){
+        v[i] += dthalf * (a[i] + a_old[i]);
+    }
+    
+    //apply stochastic forces
+    // ....
+    
+    //update time
+    t += dt;
+}
+
+void Simulation::run(){
+    if (speed() < 1e-5){
+        init_state(phys.T_init);
+    }
+    
+    while (t < sim.time_end){
+        print_state();
+        step();
+    }
 }

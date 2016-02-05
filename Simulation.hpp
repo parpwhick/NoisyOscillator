@@ -18,7 +18,7 @@
 #include <random>
 #include <ctime>
 #include <array>
-
+#include <iostream>
 
 typedef std::array<double, 3> vec;
 
@@ -38,15 +38,17 @@ public:
     Parameters sim;
     
     double init_state(double T);
-    void trap_freq(double kick, int axis);
-    const vec & update_omega(double time, vec pos);
+    void step();
+    double trap_freq(int axis);
+    const vec & update_omega(const vec & pos);
     void update_state(double time);
     double speed();
     double update_energy();
     double randn();
     double rand();
-    void read_state();
-
+    void read_state(std::ostream & out = std::cout);
+    void print_state(std::ostream & out = std::cout);
+    void run();
     
     // Statistics of the simulation
     struct {
@@ -54,12 +56,12 @@ public:
         int decays;
     } stats;
     
+    double t;
     vec x;
     vec v;
-    vec omega_squared;
     vec a;
-    double t;
     vec energies;
+    vec omega;
     
     
 };

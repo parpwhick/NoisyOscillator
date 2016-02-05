@@ -70,11 +70,11 @@ struct Physical {
     
     Physical() {        
         using namespace consts;
-        RF_omega = 2 * pi * 22.7 * MHz;
+        RF_omega = 2 * pi * 22 * MHz;
         RF_amplitude = std::sqrt(2.0);
         
         // Pulse (Frequency) radial (average, in Hz)
-        omega_rad0 = 2 * pi * 0.445 * MHz;
+        omega_rad0 = 2 * pi * 1.2 * MHz;
     
         // Pulse (Frequency) axial (average, in Hz)
         omega_ax0  = 2 * pi * 0.3 * MHz;
@@ -114,8 +114,8 @@ public:
     Parameters(Physical phys) {
         using namespace consts;
 
-        // default 10 steps per micromotion oscillation
-        dt = 0.1 / (phys.RF_omega / 2 / pi);
+        // default 4 steps per micromotion oscillation
+        dt = 0.25 / (phys.RF_omega / 2 / pi);
 
         set_dependent_parameters();
     }
