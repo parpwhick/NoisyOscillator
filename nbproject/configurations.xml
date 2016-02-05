@@ -71,7 +71,7 @@
         <ccTool>
           <developmentMode>5</developmentMode>
           <standard>11</standard>
-          <commandLine>-O3</commandLine>
+          <commandLine>-O3 -fopenmp</commandLine>
           <warningLevel>2</warningLevel>
         </ccTool>
         <fortranCompilerTool>

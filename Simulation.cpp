@@ -20,8 +20,8 @@
 
 
 Simulation::Simulation() : phys(), sim(phys) {
-    std::cerr <<  "Default constructor called\n";
-    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
+//    std::cerr <<  "Default constructor called\n";
+//    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
 }
 
@@ -87,6 +87,7 @@ double Simulation::init_state(double T) {
     using namespace consts;
     t = sim.time_start;
     x = {0.0, 0.0, 0.0};
+    phys.RF_phi = 2 * pi * rand();
     update_omega(x);
     
     phys.T_init = T;
@@ -123,7 +124,7 @@ void Simulation::update_state(double tt){
     auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
     
     double phase = 2 * consts::pi * phys.RF_omega * tt + phys.RF_phi;
-    double rfvoltage = phys.RF_amplitude * cos(phase);
+    double rfvoltage = cos(phase) * phys.RF_amplitude;
     
     auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
     a = { -rfvoltage * square(omega[X]) * x[X], // X

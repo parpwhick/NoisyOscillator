@@ -28,30 +28,78 @@ void run_average(Simulation &sim, int N, double T) {
     cerr << "Average energy after " << N << " realizations:" << avg_en << endl;
 }
 
-int main(int argc, char** argv) {
+void scan_frequency(){
     using namespace consts;
-    Simulation single_ion;
-
-    single_ion.init_state(0.080);
-    single_ion.read_state(cerr);
-    //    run_average(single_ion, 100000, 1);
-
-    vec freqs;
-
-    auto phys_par = Physical();
-    auto local_par = Parameters{phys_par};
-
-    for (double rf_freq = 15; rf_freq <= 100; rf_freq += 5) {
+    #pragma omp parallel for schedule(dynamic)
+    for (int rf_freq = 1; rf_freq <= 100; rf_freq += 5) {
+        vec freqs;
+        Simulation single_ion;
         double rf_omega = 2 * pi * rf_freq * MHz;
         
         single_ion.phys.RF_omega = rf_omega;
-        single_ion.sim.dt = 0.05 / rf_omega;
+        single_ion.sim.dt = 0.01 / rf_omega;
         for (int axis = 0; axis < 3; axis++) {
             freqs[axis] = single_ion.trap_freq(axis);
         }
-        cerr << (single_ion.phys.RF_omega / 2 / consts::pi) << " " << freqs[0] << " " <<
+        
+        #pragma omp critical 
+        cout << rf_freq << " " << freqs[0] << " " <<
                 freqs[1] << " " << freqs[2] << " " << endl;
     }
+}
+
+void scan_frequency_comp(){
+    using namespace consts;
+    #pragma omp parallel for schedule(dynamic)
+    for (int rf_freq = 1; rf_freq <= 100; rf_freq += 1) {
+        vec freqs;
+        Simulation single_ion;
+        double rf_omega = 2 * pi * rf_freq * MHz;
+        
+        single_ion.phys.RF_omega = rf_omega;
+        single_ion.sim.dt = 0.005 / rf_omega / rf_freq;
+        single_ion.phys.RF_amplitude = 10*rf_freq; 
+        for (int axis = 0; axis < 3; axis++) {
+            freqs[axis] = single_ion.trap_freq(axis);
+        }
+        
+        #pragma omp critical 
+        cout << rf_freq << " " << freqs[0] << " " <<
+                freqs[1] << " " << freqs[2] << " " << endl;
+    }
+}
+
+void scan_amplitude(){
+    using namespace consts;
+    #pragma omp parallel for schedule(dynamic)
+    for (int rf_ampl = 1; rf_ampl <= 100; rf_ampl += 5) {
+        vec freqs;
+        Simulation single_ion;
+        double rf_omega = 2 * pi * 10 * MHz;
+        
+        single_ion.phys.RF_omega = rf_omega;
+        single_ion.sim.dt = 0.01 / rf_omega;
+        single_ion.phys.RF_amplitude = rf_ampl;
+        
+        for (int axis = 0; axis < 3; axis++) {
+            freqs[axis] = single_ion.trap_freq(axis);
+        }
+        
+        #pragma omp critical 
+        cout << rf_ampl << " " << freqs[0] << " " <<
+                freqs[1] << " " << freqs[2] << " " << endl;
+    }
+}
+
+int main(int argc, char** argv) {
+    using namespace consts;
+//    Simulation single_ion;
+
+//    single_ion.init_state(0.080);
+//    single_ion.read_state(cerr);
+    //    run_average(single_ion, 100000, 1);
+
+    scan_frequency_comp();
     return 0;
 }
 
