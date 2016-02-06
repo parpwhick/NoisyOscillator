@@ -8,7 +8,7 @@
 
 void Parameters::set_dependent_parameters() {
     time_start = 0.0;
-    time_end = 1000000 * dt;
+    time_end = 100000 * dt;
     steps = std::ceil(time_end - time_start) / dt - 1;
 
     time_engine_start = time_end + dt;

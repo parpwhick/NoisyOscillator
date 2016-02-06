@@ -28,6 +28,22 @@ Simulation::Simulation() : phys(), sim(phys) {
 Simulation::~Simulation() {
 }
 
+double window_avg(std::vector<double> values, std::vector<double> w, int from){
+    double avg = 0.0; 
+    int N1 = values.size();
+    int N2 = w.size();
+    
+    //safeguard
+    if (N1 != N2)
+        return 0.0; 
+    
+    for(int i=0; i < N2; i++){        
+        avg += w[i] * values[(i + from) % N1];
+    }
+    
+    return avg;
+}
+
 double Simulation::trap_freq(int axis) {
     using namespace consts;
     
@@ -43,34 +59,70 @@ double Simulation::trap_freq(int axis) {
     
     int zero_crossings = 0; 
     bool inside_threshold = false;
-    double outer_threshold = 0.80 * kick;
-    double inner_threshold = 0.98 * kick;
+    bool active = true;
+    double outer_threshold = 0.05 * kick;
+    double inner_threshold = 0.01 * kick;
     double in_time = 0;
     double last_time = t;
+    double first_time =sim.time_end;
     
-    while (t < sim.time_end){
-//        print_state();
+    // filter with window
+    int window_len = 10 * std::rint<int>(1 / (sim.dt * phys.RF_omega)); 
+    if (window_len < 2){
+        std::cerr << "window too short!!!!" << std::endl;
+    }
+    auto w = lanczos<double>(window_len);
+    std::vector<double> buf(window_len);
+    
+    int steps = 0;
+    for (int i = 0; i < window_len; i++){
+        buf[i] = x[axis];
         step();
-        if (x[axis] > inner_threshold && !inside_threshold) {
+        steps += 1;
+    }
+    
+    int from = 0;
+    double t_delta = sim.dt * window_len / 2.0;
+    while (t < sim.time_end){
+        steps += 1;
+        //average with a moving window
+        double x_avg = window_avg(buf, w, from);
+        from = (from + 1) % window_len; 
+//        std::cout << t << " " << x[axis] << " " << t - t_delta << " " << x_avg << std::endl; 
+        
+        //detection of zero crossing on the smoothened signal
+        if (x_avg > 0 && x_avg < inner_threshold && !inside_threshold && active) {
             in_time = t;
             inside_threshold = true;
-        } else if(x[axis] < inner_threshold && inside_threshold){
-            last_time = (t + in_time) / 2;
+//            std::cerr << "entered at " << in_time - t_delta << std::endl;
+        } else if(x_avg > -inner_threshold && inside_threshold){
+            last_time = (t + in_time) / 2 - t_delta;
         } 
         
-        if (x[axis] < outer_threshold){
-            if (inside_threshold)
+        if (x_avg < -outer_threshold){
+            if (inside_threshold){
                 zero_crossings += 1;
-            inside_threshold = false;            
+                first_time = std::min(last_time, first_time);
+//                std::cerr << in_time << " " << last_time << ";" << std::endl;
+            }
+            inside_threshold = false;
+            active = false;
         }
+        
+        if (x_avg > outer_threshold)
+            active = true;
         
         if (zero_crossings >= 41)
             break;
+        
+        step();
+        buf[from] = x[axis];
     }
     
-    double freq = (zero_crossings-1) / last_time;
+    double freq = (zero_crossings-1) / (last_time-first_time);
+    std::cerr << "First time " << first_time << " and last " << last_time << std::endl;
     
-//    std::cerr << "Axis " << axis << " freq: " << freq << ", with crossings " << zero_crossings << std::endl;    
+    std::cerr << "Axis " << axis << " freq: " << freq << ", with crossings " << zero_crossings << " and steps: " << steps << std::endl;    
     return freq;
 }
 

@@ -41,6 +41,25 @@ template<typename T> inline T square(const T & x){
     return x*x;
 }
 
+inline double sinc(double x){
+    //for x > 1e-8 (sqrt[eps]), sinc(x)==1.0
+    return (std::abs(x)>1e-8) ? (std::sin(x)/x) : x;
+}
+
+template <typename T>
+std::vector<T> lanczos(int n){
+    std::vector<T> w(n);
+    T div = n-1;
+    T norm = 0.0;
+    for (int k = 0; k < n; k++){
+        w[k] = sinc(2*k/div - 1) ;
+        norm += w[k];
+    }
+    for (int k = 0; k < n; k++){
+        w[k] /= norm;
+    }
+    return w;    
+}
 
 #endif /* UTILITIES_H */
 
