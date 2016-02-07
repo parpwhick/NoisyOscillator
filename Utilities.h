@@ -48,6 +48,7 @@ inline double sinc(double x){
 
 template <typename T>
 std::vector<T> lanczos(int n){
+//    std::cerr << "Creating window with size " << n << std::endl;
     std::vector<T> w(n);
     T div = n-1;
     T norm = 0.0;

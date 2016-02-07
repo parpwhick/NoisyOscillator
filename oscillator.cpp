@@ -38,13 +38,13 @@ void scan_frequency(){
         
         single_ion.phys.RF_omega = rf_omega;
         single_ion.sim.dt = 0.05 / rf_omega;
-        for (int axis = 0; axis < 3; axis++) {
+        for (int axis = 0; axis < 1; axis++) {
             freqs[axis] = single_ion.trap_freq(axis);
         }
         
 //        #pragma omp critical 
-        cout << rf_freq << " " << freqs[0] << " " <<
-                freqs[1] << " " << freqs[2] << " " << endl;
+//        cout << rf_freq << " " << freqs[0] << " " <<
+//                freqs[1] << " " << freqs[2] << " " << endl;
     }
 }
 
