@@ -7,6 +7,7 @@
       <itemPath>Constants.h</itemPath>
       <itemPath>Simulation.hpp</itemPath>
       <itemPath>SimulationParameters.h</itemPath>
+      <itemPath>Utilities.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Resource Files"
@@ -54,6 +55,8 @@
       </item>
       <item path="SimulationParameters.h" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="Utilities.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="oscillator.cpp" ex="false" tool="1" flavor2="0">
       </item>
     </conf>
@@ -90,6 +93,8 @@
       <item path="SimulationParameters.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="SimulationParameters.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="Utilities.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="oscillator.cpp" ex="false" tool="1" flavor2="0">
       </item>

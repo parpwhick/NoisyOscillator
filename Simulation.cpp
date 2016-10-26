@@ -28,22 +28,6 @@ Simulation::Simulation() : phys(), sim(phys) {
 Simulation::~Simulation() {
 }
 
-double window_avg(std::vector<double> values, std::vector<double> w, int from){
-    double avg = 0.0;
-    int N1 = values.size();
-    int N2 = w.size();
-
-    //safeguard
-    if (N1 != N2)
-        return 0.0;
-
-    for(int i=0; i < N2; i++){
-        avg += w[i] * values[(i + from) % N1];
-    }
-
-    return avg;
-}
-
 double Simulation::trap_freq(int axis) {
     using namespace consts;
 
@@ -56,6 +40,7 @@ double Simulation::trap_freq(int axis) {
     double kick = sigma_x;
     x[axis] = kick;
     update_state(t);
+    a_t = a_tm = a;
 
     int zero_crossings = 0;
     bool inside_threshold = false;
@@ -76,13 +61,13 @@ double Simulation::trap_freq(int axis) {
     double x_avg = x[axis];
     
     while (t < sim.time_end){
-//        std::cout << t << " " << x[axis] << " " << t-t_delta << " " << x_avg2 << std::endl;
+//        std::cout << t << " " << x[axis] << " " << t-t_delta << " " << x_avg << std::endl;
 
         //detection of zero crossing on the smoothened signal
         if (x_avg > 0 && x_avg < inner_threshold && !inside_threshold && active) {
             in_time = t;
             inside_threshold = true;
-            std::cerr << "entered at " << in_time - t_delta << std::endl;
+//            std::cerr << "entered at " << in_time - t_delta << std::endl;
         } else if(x_avg > -inner_threshold && inside_threshold){
             last_time = (t + in_time) / 2 - t_delta;
         }
@@ -127,7 +112,7 @@ double Simulation::init_state(double T) {
     using namespace consts;
     t = sim.time_start;
     x = {0.0, 0.0, 0.0};
-    phys.RF_phi = 2 * pi * rand();
+//    phys.RF_phi = 2 * pi * rand();
     update_omega(x);
 
     phys.T_init = T;
@@ -143,6 +128,8 @@ double Simulation::init_state(double T) {
         x[i] = sigma_i * randn();
     }
 
+    a_t = a;
+    a_tm = a;
     return update_energy();
 }
 
@@ -208,24 +195,51 @@ void Simulation::print_state(std::ostream & out){
     out << std::endl;
 }
 
-//  Step forward of dt by using the Velocity Verlet algorithm
+////  Step forward of dt by using the Velocity Verlet algorithm
+//void Simulation::step(){
+//    static double dt = sim.dt;
+//    static double dthalf = 0.5 * dt;
+//
+//    //update position
+//    for (int i=0; i<3; i++){
+//        x[i] += (v[i] + dthalf * a[i]) * dt;
+//    }
+//
+//    //update acceleration on the new position
+//    update_omega(x); //it is already x(t+dt)
+//    vec a_old = a;
+//    update_state(t+dt);
+//
+//    //update speed
+//    for (int i=0; i<3; i++){
+//        v[i] += dthalf * (a[i] + a_old[i]);
+//    }
+//
+//    //apply stochastic forces
+//    // ....
+//
+//    //update time
+//    t += dt;
+//}
+
+// Step forward of dt by using Beeman algorithm
 void Simulation::step(){
     static double dt = sim.dt;
-    static double dthalf = 0.5 * dt;
 
     //update position
     for (int i=0; i<3; i++){
-        x[i] += (v[i] + dthalf * a[i]) * dt;
+        x[i] += (v[i] + dt / 6.0 * (4* a[i] - a_tm[i])) * dt;
     }
 
     //update acceleration on the new position
     update_omega(x); //it is already x(t+dt)
-    vec a_old = a;
+    a_tm = a_t;
+    a_t = a;
     update_state(t+dt);
 
     //update speed
     for (int i=0; i<3; i++){
-        v[i] += dthalf * (a[i] + a_old[i]);
+        v[i] += dt / 6.0 * (2 * a[i] + 5 * a_t[i] - a_tm[i]);
     }
 
     //apply stochastic forces

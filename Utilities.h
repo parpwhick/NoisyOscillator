@@ -23,6 +23,53 @@ std::ostream& operator<< (std::ostream& out, const std::array<T, N>& v) {
   return out;
 }
 
+template <typename T> class windowing {
+public:
+    
+    std::vector<T> w;
+    std::vector<T> buf;
+    int from;
+    int N;
+    
+    windowing(int n){
+        N = n;
+        w = lanczos(n);
+        buf.resize(0.0, n);
+        from = 0;
+    }
+    ~windowing();
+    
+    std::vector<T> lanczos(int n) {
+        //    std::cerr << "Creating window with size " << n << std::endl;
+        std::vector<T> w(n);
+        T div = n - 1;
+        T norm = 0.0;
+        for (int k = 0; k < n; k++) {
+            w[k] = sinc(2 * k / div - 1);
+            norm += w[k];
+        }
+        for (int k = 0; k < n; k++) {
+            w[k] /= norm;
+        }
+        return w;
+    }
+
+    T window_avg() {
+        T avg = 0.0;
+        
+        for (int i = 0; i < N; i++) {
+            avg += w[i] * buf[(i + from) % N];
+        }
+
+        return avg;
+    }
+    
+    void add_value(T val){
+        buf[from] = val;
+        from = from + 1 % N;
+    }
+
+};
 
 inline double module(vec vector) {
     double m = 0.0;
@@ -46,21 +93,6 @@ inline double sinc(double x){
     return (std::abs(x)>1e-8) ? (std::sin(x)/x) : x;
 }
 
-template <typename T>
-std::vector<T> lanczos(int n){
-//    std::cerr << "Creating window with size " << n << std::endl;
-    std::vector<T> w(n);
-    T div = n-1;
-    T norm = 0.0;
-    for (int k = 0; k < n; k++){
-        w[k] = sinc(2*k/div - 1) ;
-        norm += w[k];
-    }
-    for (int k = 0; k < n; k++){
-        w[k] /= norm;
-    }
-    return w;    
-}
 
 #endif /* UTILITIES_H */
 

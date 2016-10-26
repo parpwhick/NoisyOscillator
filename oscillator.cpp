@@ -31,20 +31,20 @@ void run_average(Simulation &sim, int N, double T) {
 void scan_frequency(){
     using namespace consts;
     #pragma omp parallel for schedule(dynamic)
-    for (int rf_freq = 10; rf_freq <= 10; rf_freq += 5) {
+    for (int rf_freq = 10; rf_freq <= 100; rf_freq += 5) {
         vec freqs;
         Simulation single_ion;
         double rf_omega = 2 * pi * rf_freq * MHz;
         
         single_ion.phys.RF_omega = rf_omega;
         single_ion.sim.dt = 0.05 / rf_omega;
-        for (int axis = 0; axis < 1; axis++) {
+        for (int axis = 0; axis < 3; axis++) {
             freqs[axis] = single_ion.trap_freq(axis);
         }
         
-//        #pragma omp critical 
-//        cout << rf_freq << " " << freqs[0] << " " <<
-//                freqs[1] << " " << freqs[2] << " " << endl;
+        #pragma omp critical 
+        cout << rf_freq << " " << freqs[0] << " " <<
+                freqs[1] << " " << freqs[2] << " " << endl;
     }
 }
 
@@ -88,6 +88,34 @@ void scan_amplitude(){
         #pragma omp critical 
         cout << rf_ampl << " " << freqs[0] << " " <<
                 freqs[1] << " " << freqs[2] << " " << endl;
+    }
+}
+
+/* Perform scan at single frequency, but with different timesteps, 
+ * to monitor the converge of the numerical method 
+ */
+void scan_accuracy(){
+    using namespace consts;
+    #pragma omp parallel for schedule(dynamic)
+    for (int dt = 1; dt <= 100; dt += 1) {
+        vec freqs;
+        vec pos;
+        Simulation single_ion;
+        double rf_omega = 2 * pi * 30 * MHz;
+        
+        single_ion.phys.RF_omega = rf_omega;
+        single_ion.sim.dt = 0.01 * dt / rf_omega;
+        single_ion.phys.RF_amplitude = 30;
+        for (int axis = 0; axis < 3; axis++) {
+            freqs[axis] = single_ion.trap_freq(axis);
+            pos[axis] = single_ion.x[axis];
+        }
+        
+        #pragma omp critical 
+        cout << single_ion.sim.dt << " " << freqs[0] << " " <<
+                freqs[1] << " " << freqs[2] << " " 
+            << pos[0] << " " << pos[1] << " " << pos[2] 
+            << endl;
     }
 }
 

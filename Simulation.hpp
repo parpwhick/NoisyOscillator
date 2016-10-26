@@ -57,12 +57,19 @@ public:
     } stats;
     
     double t;
+    // current position
     vec x;
+    // current speed
     vec v;
+    // current acceleration
     vec a;
     vec energies;
     vec omega;
     
+    // acceleration at previous step
+    vec a_t;
+    // acceleration two steps behind
+    vec a_tm;
     
 };
 
