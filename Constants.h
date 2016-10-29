@@ -14,6 +14,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+// Constants in SI units
 namespace consts {
     typedef const double type;
     // Electron charge [C]
@@ -46,7 +47,7 @@ namespace consts {
     type k_B = 1.3806488e-23;
     
     // Resonance lifetime, in [s]
-    type tau = 7.1 * nano;
+    type tau = 6.904 * nano;
     
     // Resonance linewidth, in [Hz]
     type gamma = 1 / (2 * pi * tau);

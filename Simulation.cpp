@@ -36,7 +36,7 @@ double Simulation::trap_freq(int axis) {
     t = 0.0;
     update_omega(x);
 
-    double sigma_x = sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
+    double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
     double kick = sigma_x;
     x[axis] = kick;
     update_state(t);
@@ -151,7 +151,7 @@ void Simulation::update_state(double tt){
     auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
 
     double phase = 2 * consts::pi * phys.RF_omega * tt + phys.RF_phi;
-    double rfvoltage = cos(phase) * phys.RF_amplitude;
+    double rfvoltage = std::cos(phase) * phys.RF_amplitude;
 
     auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
     a = { -rfvoltage * square(omega[X]) * x[X], // X
