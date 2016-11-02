@@ -71,18 +71,24 @@ public:
 
 };
 
-inline double module(vec vector) {
-    double m = 0.0;
-    for (auto & x : vector) {
-        m += x * x;
-    }
-    return std::sqrt(m);
-}
-
-
 const int X = 0;
 const int Y = 1;
 const int Z = 2;
+
+inline double scalar(const vec& a, const vec&b) {
+    return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];
+}
+
+inline double module(const vec & vector) {
+    double m = scalar(vector, vector);
+    return std::sqrt(m);
+}
+
+inline double normalize(vec& vector) {
+    auto m = module(vector);
+    vector= {vector[X] / m, vector[Y] / m, vector[Z] / m};
+    return m;
+}
 
 template<typename T> inline T square(const T & x){
     return x*x;

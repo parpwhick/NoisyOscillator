@@ -37,25 +37,44 @@ public:
     Physical  phys;
     Parameters sim;
     
+    // Init state with temperature T on all axes
     double init_state(double T);
+    // Init state in elongation kick in all direction
+    double init_kick(double kick);
+    // Step forward one default time step
     void step();
-    double trap_freq(int axis);
+    // Perform one laser interaction step
+    void laserXYZ();
+    // Calculate trap frequency on one axis
+    double trap_freq(int axis, double kick = 1e-5);
+    // Update the position-dependent trap frequency
     const vec & update_omega(const vec & pos);
+    // Calculate forces and energies
     void update_state(double time);
+    // Return speed
     double speed();
+    // Calculate energy
     double update_energy();
-    double randn();
-    double rand();
-    void read_state(std::ostream & out = std::cout);
-    void print_state(std::ostream & out = std::cout);
-    void run();
     
+    // Random normal variable
+    double randn();
+    // Random double in [0,1]
+    double rand();
+    // Read state
+    void read_state(std::ostream & out = std::cout);
+    // Print state
+    void print_state(std::ostream & out = std::cout);
+    // Run simulation from t = 0 to phys.end_time
+    void run();
+
     // Statistics of the simulation
     struct {
         int N;
         int decays;
+        int printed;
     } stats;
     
+    // current time
     double t;
     // current position
     vec x;

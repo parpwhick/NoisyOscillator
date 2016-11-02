@@ -43,6 +43,9 @@ namespace consts {
     // Planck constant, in [J s]
     type hbar = 1.054571726e-34;
     
+    // Planck / C, 2 * pi * hbar / C
+    type h_div_c = 2 * pi * hbar / C;
+    
     // Boltzmann constant, in [J/K]
     type k_B = 1.3806488e-23;
     
@@ -51,6 +54,12 @@ namespace consts {
     
     // Resonance linewidth, in [Hz]
     type gamma = 1 / (2 * pi * tau);
+    
+    // Resonance laser wavelength
+    type wavelength = 396.9592e-9;
+
+    // Resonance laser frequency, in [Hz]
+    type resonance= C / wavelength;
 }
 
 #endif /* CONSTANTS_H */

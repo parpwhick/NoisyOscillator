@@ -23,12 +23,13 @@ Simulation::Simulation() : phys(), sim(phys) {
 //    std::cerr <<  "Default constructor called\n";
 //    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
+    stats = {};
 }
 
 Simulation::~Simulation() {
 }
 
-double Simulation::trap_freq(int axis) {
+double Simulation::trap_freq(int axis, double kick) {
     using namespace consts;
 
     v = {0.0, 0.0, 0.0};
@@ -36,12 +37,14 @@ double Simulation::trap_freq(int axis) {
     t = 0.0;
     update_omega(x);
 
-    double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
-    double kick = sigma_x;
+    //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
+    // kick = randn() * sigma_x
     x[axis] = kick;
     update_state(t);
     a_t = a_tm = a;
-
+    auto old_saturation = phys.saturation;
+    phys.saturation = 0;
+    
     int zero_crossings = 0;
     bool inside_threshold = false;
     bool active = true;
@@ -49,7 +52,7 @@ double Simulation::trap_freq(int axis) {
     double inner_threshold = 0.01 * kick;
     double in_time = 0;
     double last_time = t;
-    double first_time =sim.time_end;
+    double first_time = sim.time_end;
 
     // filter with exponential 1st order causal filter
     int window_len = 10 * std::rint<int>(1 / (sim.dt * phys.RF_omega));
@@ -96,6 +99,7 @@ double Simulation::trap_freq(int axis) {
 //    std::cerr << "First time " << first_time << " and last " << last_time << std::endl;
 
 //    std::cerr << "Axis " << axis << " freq: " << freq << ", with crossings " << zero_crossings << std::endl;
+    phys.saturation = old_saturation;
     return freq;
 }
 
@@ -132,6 +136,24 @@ double Simulation::init_state(double T) {
     a_tm = a;
     return update_energy();
 }
+
+double Simulation::init_kick(double kick) {
+    using namespace std;
+    using namespace consts;
+    t = sim.time_start;
+    x = {kick, kick, kick};
+    v = {0, 0, 0};
+    a = v;
+//    phys.RF_phi = 2 * pi * rand();
+    update_omega(x);
+
+    phys.T_init = 0;
+
+    a_t = a;
+    a_tm = a;
+    return update_energy();
+}
+
 
 inline const vec & Simulation::update_omega(const vec & pos) {
     auto omega_x = phys.omega_rad0 / square(1 + pos[Z] * phys.zk);
@@ -181,6 +203,7 @@ void Simulation::read_state(std::ostream & out){
     out << "Velocity: " << v << endl;
     out << "Omegas:   " << omega << endl;
     out << "Energies: " << energies << ", kb T: " << consts::k_B * phys.T_init << endl;
+    out << "Steps:    " << stats.N << ", decays: " << stats.decays << ", printouts: " << stats.printed << endl;
 }
 
 // Print a line brief with the information
@@ -193,69 +216,117 @@ void Simulation::print_state(std::ostream & out){
         }
     }
     out << std::endl;
+    stats.printed++;
 }
 
-////  Step forward of dt by using the Velocity Verlet algorithm
-//void Simulation::step(){
-//    static double dt = sim.dt;
-//    static double dthalf = 0.5 * dt;
-//
-//    //update position
-//    for (int i=0; i<3; i++){
-//        x[i] += (v[i] + dthalf * a[i]) * dt;
-//    }
-//
-//    //update acceleration on the new position
-//    update_omega(x); //it is already x(t+dt)
-//    vec a_old = a;
-//    update_state(t+dt);
-//
-//    //update speed
-//    for (int i=0; i<3; i++){
-//        v[i] += dthalf * (a[i] + a_old[i]);
-//    }
-//
-//    //apply stochastic forces
-//    // ....
-//
-//    //update time
-//    t += dt;
-//}
-
-// Step forward of dt by using Beeman algorithm
+//  Step forward of dt by using the Velocity Verlet algorithm
 void Simulation::step(){
     static double dt = sim.dt;
+    static double dthalf = 0.5 * dt;
 
     //update position
     for (int i=0; i<3; i++){
-        x[i] += (v[i] + dt / 6.0 * (4* a[i] - a_tm[i])) * dt;
+        x[i] += (v[i] + dthalf * a[i]) * dt;
     }
 
     //update acceleration on the new position
     update_omega(x); //it is already x(t+dt)
-    a_tm = a_t;
-    a_t = a;
+    vec a_old = a;
     update_state(t+dt);
 
     //update speed
     for (int i=0; i<3; i++){
-        v[i] += dt / 6.0 * (2 * a[i] + 5 * a_t[i] - a_tm[i]);
+        v[i] += dthalf * (a[i] + a_old[i]);
     }
 
     //apply stochastic forces
-    // ....
+    if (phys.saturation > 0)
+        laserXYZ();
 
     //update time
     t += dt;
+    
+    //update counter
+    stats.N++;
 }
 
+// Step forward of dt by using Beeman algorithm
+//void Simulation::step(){
+//    static double dt = sim.dt;
+//
+//    //update position
+//    for (int i=0; i<3; i++){
+//        x[i] += (v[i] + dt / 6.0 * (4* a[i] - a_tm[i])) * dt;
+//    }
+//
+//    //update acceleration on the new position
+//    update_omega(x); //it is already x(t+dt)
+//    a_tm = a_t;
+//    a_t = a;
+//    update_state(t+dt);
+//
+//    //update speed
+//    for (int i=0; i<3; i++){
+//        v[i] += dt / 6.0 * (2 * a[i] + 5 * a_t[i] - a_tm[i]);
+//    }
+//
+//    //apply stochastic forces
+//    if (phys.saturation > 0)
+//        laserXYZ();
+//
+//    //update time
+//    t += dt;
+//    
+//    //update counter
+//    stats.N++;
+//}
+
+void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
+    using namespace consts;
+    // Momentum of a photon at the Ca+ resonance, about 1.669e-27 [J s / m]
+    static const double resonance_k = 2 * pi * resonance / C;
+    static const vec direction = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
+
+    double absorb_k = resonance_k - 2 * pi * phys.detuning;
+    vec laser_k = {absorb_k * direction[X], absorb_k * direction[Y], absorb_k * direction[Z]};
+
+    auto kv = scalar(laser_k, v);
+
+    double term = 2 * (2 * pi * phys.detuning - kv) / consts::gamma;
+    // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
+    double scatteringrate = (phys.saturation * consts::gamma / 2) / (1 + phys.saturation + square(term));
+
+    if (sim.dt * scatteringrate > 1) 
+        std::cout << "timestep too big for laserinteraction" << std::endl;
+
+    if (rand() <= sim.dt * scatteringrate) {//photonabsorbed
+        // step time after the scattering
+        // ...
+
+        // count scattering events here
+        // ...
+        
+        vec rand_dir;
+        for (auto &d : rand_dir)
+            d = randn();
+        normalize(rand_dir);
+
+        for (int r = 0; r < 3; r++) {
+            v[r] += laser_k[r] / MCa  + resonance_k / MCa * rand_dir[r];
+        }
+        stats.decays++;
+    }
+}
+
+
 void Simulation::run(){
-    if (speed() < 1e-5){
+    if (speed() < 1e-5 && module(x) < 1e-8){
         init_state(phys.T_init);
     }
 
     while (t < sim.time_end){
-        print_state();
+        if(stats.N % sim.print_every == 0)
+            print_state();
         step();
     }
 }

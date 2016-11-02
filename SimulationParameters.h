@@ -45,7 +45,7 @@ struct Physical {
     double zk;
     
     //Voltage on the endcaps
-    double Uz = 0.16;
+    //double Uz = 0.16;
 
     //Center of trap along z axis
     double zOffset = 0.0;
@@ -55,8 +55,6 @@ struct Physical {
     
     // Frequency axial (average, in Hz)
     double omega_ax0;
-    
-
     
     
     void set_dependent_parameters(){        
@@ -71,13 +69,13 @@ struct Physical {
     Physical() {        
         using namespace consts;
         RF_omega = 2 * pi * 22 * MHz;
-        RF_amplitude = std::sqrt(2.0);
+        RF_amplitude = 600;
         
         // Pulse (Frequency) radial (average, in Hz)
-        omega_rad0 = 2 * pi * 1.2 * MHz;
+        omega_rad0 = 2 * pi * 0.440 * MHz;
     
         // Pulse (Frequency) axial (average, in Hz)
-        omega_ax0  = 2 * pi * 0.3 * MHz;
+        omega_ax0  = 2 * pi * 0.080 * MHz;
 
         // detuning of the laser in Hz
         detuning = -consts::gamma;
@@ -106,6 +104,7 @@ public:
     double time_start;
     double time_end;
     int steps;
+    int print_every = 500;
 
     double time_engine_start;
     double laser_initial_off;

@@ -119,15 +119,38 @@ void scan_accuracy(){
     }
 }
 
-int main(int argc, char** argv) {
+void laser_cool(){
+    using namespace consts;
+    
+    Simulation single_ion;
+    single_ion.sim.dt = consts::tau / 20;
+    single_ion.init_state(0.2);
+    single_ion.phys.saturation = 10;
+    single_ion.phys.detuning = -consts::gamma/2;
+    single_ion.sim.time_end = 0.03;
+    single_ion.sim.print_every = 1000;
+
+    vec freqs;
+    for (int axis = 0; axis < 3; axis++) {
+        freqs[axis] = single_ion.trap_freq(axis, 1e-3);
+    }
+    std::cerr << "Frequencies: " << freqs << std::endl;
+    
+    single_ion.init_kick(100e-6);
+    single_ion.run(); 
+    single_ion.read_state(std::cerr);
+}
+
+int main(int , char** ) {
     using namespace consts;
 //    Simulation single_ion;
 
 //    single_ion.init_state(0.080);
 //    single_ion.read_state(cerr);
-    //    run_average(single_ion, 100000, 1);
+//    run_average(single_ion, 100000, 1);
 
-    scan_frequency();
+    //scan_frequency();
+    laser_cool();
     return 0;
 }
 

@@ -32,8 +32,8 @@ extern EXPORT FullGLWidgetCode &IonTrapDisplay;
 using namespace std;
 glob(int,numIons,maxionanz);
 double Time=4000./1e6;	//30000./1e6; Gesamtdauer der Simulation in sekunden		//49993./1e6;   //1000./1e6;//
-						//ACHTUNG!!! Time muss ausreichend klein gew‰hlt werden, ab einem bestimmten grˆﬂe des Time/steps verh‰ltnisses steigen sonst die fallenfrequenzen an
-						// wenn das verh‰ltnis klein genug ist, gehen die fallenfrequenzen "in s‰ttigung", sprich kleinere Time werte verringern die fallenfrequenz nicht weiter.
+						//ACHTUNG!!! Time muss ausreichend klein gew√§hlt werden, ab einem bestimmten gr√∂√üe des Time/steps verh√§ltnisses steigen sonst die fallenfrequenzen an
+						// wenn das verh√§ltnis klein genug ist, gehen die fallenfrequenzen "in s√§ttigung", sprich kleinere Time werte verringern die fallenfrequenz nicht weiter.
 int const steps=2000000;	//Anzahl der Simulationssteps
 glob(double, hglob,5e-9);   //zeitschritt in sekunden
 
@@ -64,8 +64,8 @@ const double k_B=1.3806488e-23; // Boltzmann Konstante [J/K]
 
 
 
-						//ACHTUNG!!! Time muss ausreichend klein gew‰hlt werden, ab einem bestimmten grˆﬂe des Time/steps verh‰ltnisses steigen sonst die fallenfrequenzen an
-						// wenn das verh‰ltnis klein genug ist, gehen die fallenfrequenzen "in s‰ttigung", sprich kleinere Time werte verringern die fallenfrequenz nicht weiter.
+						//ACHTUNG!!! Time muss ausreichend klein gew√§hlt werden, ab einem bestimmten gr√∂√üe des Time/steps verh√§ltnisses steigen sonst die fallenfrequenzen an
+						// wenn das verh√§ltnis klein genug ist, gehen die fallenfrequenzen "in s√§ttigung", sprich kleinere Time werte verringern die fallenfrequenz nicht weiter.
 
 const double T=0.001;//0.1;		//in Kelvin
 glob(bool,initialdamp,false);
@@ -84,7 +84,7 @@ bool refine=true;
 class D3world;
 class D3electrode;
 
-//sollte ungerade anzahl sein da <---- zu faul war f¸r gerade
+//sollte ungerade anzahl sein da <---- zu faul war f√ºr gerade
 #define Anzahl 11
 #define LOOPS 100
 bool maincalled=false;
@@ -193,7 +193,7 @@ EXPORT void getTau(){
 	tauSet(tautemp);
 	setTau();
 }
-glob(double,detune,-1.e7);	//Verstimmung k¸hllaser
+glob(double,detune,-1.e7);	//Verstimmung k√ºhllaser
 glob(double,sat,5);//=I/I0
 
 EXPORT double setGammaHalf(){
@@ -254,7 +254,7 @@ double static z0=4.0*0.001; //Distance endcaps to trap center
 
 int ionplotcntmax;
 int ionplotcnt[CPUCNT]={};
-#define ionplotanz 100000		//100000 geht, bei 1000000 st¸rzt er ab beim allokieren des pseichers f¸rs zweite positionsarray
+#define ionplotanz 100000		//100000 geht, bei 1000000 st√ºrzt er ab beim allokieren des pseichers f√ºrs zweite positionsarray
 //double tttt[CPUCNT][ionplotanz];
 //double yyyy[3][CPUCNT][maxionanz][ionplotanz];
 
@@ -815,9 +815,9 @@ Kibblesim::Kibblesim():simnum(simnum){
 	simcnt++;
 	simnum=simcnt;
 
-	//initSim();	//Das darf hier nicht stehen, sonst schmiewrt alles ab. Konstruktor wird vor der GUI ausgef¸hrt. 
+	//initSim();	//Das darf hier nicht stehen, sonst schmiewrt alles ab. Konstruktor wird vor der GUI ausgef√ºhrt. 
 					//Daher werden alle Globs mit ihren startwerten und nicht mit den Werten der Gui gesetzt. 
-					//Dies kann zu Problemen f¸hren!!!
+					//Dies kann zu Problemen f√ºhren!!!
 }
 Kibblesim::~Kibblesim(){}
 
@@ -1013,7 +1013,7 @@ void Kibblesim::Laser(double v[maxionanz][3], double deltat,int axis){//Formeln 
 	double kBetrag=2.*pi*LFreq/C;
 	double kResonanzBetrag=2.*pi*TFreq/C;
 	double kL=2.*pi*LFreq/C;			//Wellenvektor Laser(verstimmt)
-	double kI=2.*pi*TFreq/C;			//Wellenvektor ‹bergang Ion
+	double kI=2.*pi*TFreq/C;			//Wellenvektor √úbergang Ion
 	double gammasqr=gamma*gamma;
 	//double temp[maxionanz];
 	//double P[maxionanz];
@@ -1120,7 +1120,7 @@ void Kibblesim::LaserXYZ(double v[maxionanz][3], double deltat){//Formeln aus Ap
 	double kBetrag=2.*pi*LFreq/C;
 	double kResonanzBetrag=2.*pi*TFreq/C;
 	double kL=2.*pi*LFreq/C;			//Wellenvektor Laser(verstimmt)
-	double kI=2.*pi*TFreq/C;			//Wellenvektor ‹bergang Ion
+	double kI=2.*pi*TFreq/C;			//Wellenvektor √úbergang Ion
 	k[0]=kBetrag/sqrt(3.);
 	k[1]=kBetrag/sqrt(3.);
 	k[2]=kBetrag/sqrt(3.);
@@ -1236,7 +1236,7 @@ double Kibblesim::scatterCount(){
 		double kBetrag=2.*pi*LFreq/C;
 		double kResonanzBetrag=2.*pi*TFreq/C;
 		double kL=2.*pi*LFreq/C;			//Wellenvektor Laser(verstimmt)
-		double kI=2.*pi*TFreq/C;			//Wellenvektor ‹bergang Ion
+		double kI=2.*pi*TFreq/C;			//Wellenvektor √úbergang Ion
 		k[0]=kBetrag/sqrt(3.);
 		k[1]=kBetrag/sqrt(3.);
 		k[2]=kBetrag/sqrt(3.);
@@ -1393,7 +1393,7 @@ void Kibblesim::Force(double t,double x[maxionanz][3], double v[maxionanz][3],do
 		cout<<"KICK"<<endl;
 		dampfinished[simnum-1]=true;
 		for(int ind=0;ind<numIons;ind++){
-			//W¸rfele nun die Startgeschwindigkeiten
+			//W√ºrfele nun die Startgeschwindigkeiten
 			double u[3];
 			/*double theta=random.Uniform(0,pi);
 			double phi=random.Uniform(0,2*pi);*/
@@ -1469,7 +1469,7 @@ void Kibblesim::ForcePseudo(double t,double x[maxionanz][3], double v[maxionanz]
 		//cout<<"KICK"<<endl;
 		dampfinished[simnum-1]=true;
 		for(int ind=0;ind<numIons;ind++){
-			//W¸rfele nun die Startgeschwindigkeiten
+			//W√ºrfele nun die Startgeschwindigkeiten
 			double u[3];
 			u[2]=RandomGauss(0,sigma);
 			u[0]=RandomGauss(0,sigma);
@@ -1791,7 +1791,7 @@ void Kibblesim::propagateForwardVerlet(double &t,int n,double x[maxionanz][3],do
 			for(int m=0;m<numIons;++m){
 				for(int dim=0;dim<3;++dim){
 					kx3[m][dim][simnum-1]=vtemp[m][dim]*h;
-					kv3[m][dim][simnum-1]=a[m][dim]*h;				//?? kv3=kv2=kv1 (ausser, dass force gewirkt hat. Aber force ¸berschreibt sich selbst
+					kv3[m][dim][simnum-1]=a[m][dim]*h;				//?? kv3=kv2=kv1 (ausser, dass force gewirkt hat. Aber force √ºberschreibt sich selbst
 					xtemp[m][dim]=x[m][dim]+kx3[m][dim][simnum-1];
 					vtemp[m][dim]=v[m][dim]+kv3[m][dim][simnum-1];
 				}
@@ -2156,12 +2156,12 @@ void Kibblesim::Sim(){
 		for(int i=0;i<numIons;i++){
 			for(int dim=0;dim<3;dim++){
 				if(MOT_mode){
-					//ERad f¸r MOT_HE
+					//ERad f√ºr MOT_HE
 					ERad[simnum-1][i][ionplotcnt[simnum-1]]=( x[i][0]*x[i][0] + x[i][1]*x[i][1] )*( 2*pi*(1632*exp(-x[i][2]/0.00425)+1880))*( 2*pi*(1632*exp(-x[i][2]/0.00425)+1880)) + (v[i][0]*v[i][0] + v[i][1]*v[i][1]);
 					ETotal[simnum-1][i][ionplotcnt[simnum-1]]=( x[i][0]*x[i][0] + x[i][1]*x[i][1] )*( 2*pi*(1632*exp(-x[i][2]/0.00425)+1880))*( 2*pi*(1632*exp(-x[i][2]/0.00425)+1880)) + (v[i][0]*v[i][0] + v[i][1]*v[i][1]) + v[i][2]*v[i][2] + (x[i][2]*x[i][2] * (2*pi*HCFreq)*(2*pi*HCFreq));
 				}
 				else{
-					//ERad f¸r HE Ion
+					//ERad f√ºr HE Ion
 					ERad[simnum-1][i][ionplotcnt[simnum-1]]=( x[i][0]*x[i][0] + x[i][1]*x[i][1] )*( 2*pi*(x[i][2]*(-2241983470.)+2969444.))*( 2*pi*(x[i][2]*(-2241983470.)+2969444.)) + (v[i][0]*v[i][0] + v[i][1]*v[i][1]);
 					ETotal[simnum-1][i][ionplotcnt[simnum-1]]=( x[i][0]*x[i][0] + x[i][1]*x[i][1] )*( 2*pi*(x[i][2]*(-2241983470.)+2969444.))*( 2*pi*(x[i][2]*(-2241983470.)+2969444.)) + (v[i][0]*v[i][0] + v[i][1]*v[i][1]) + v[i][2]*v[i][2] + (x[i][2]*x[i][2] * (2*pi*36003)*(2*pi*36003));
 				}
@@ -2869,7 +2869,7 @@ EXPORT void DrawCycle(int n, int mittel){
 
 	//--> yyyy[dim][0][i][simpoint]
 	n-=1;
-	while(p>-1){		//gehe von hinten durch yyyy array. Setze stop und start werte f¸r einzelne Schwingungsperioden. ‹ber jede Periode wird ein cycle berechnet
+	while(p>-1){		//gehe von hinten durch yyyy array. Setze stop und start werte f√ºr einzelne Schwingungsperioden. √úber jede Periode wird ein cycle berechnet
 		if (p==numberCycles && yyyy[2][0][ion][n]>yyyy[2][0][ion][n-1] && yyyy[2][0][ion][n]>yyyy[2][0][ion][n+1] && yyyy[2][0][ion][n]>0){//finde maximum
 			nstart=n;
 			p=-1;
@@ -3401,7 +3401,7 @@ EXPORT void SimParallel(int anz){
 			}
 		}
 	}
-	//hier externes writefile, da writefile ohne Threads nicht l‰uft
+	//hier externes writefile, da writefile ohne Threads nicht l√§uft
 	cout<<"writing...";
 	writeAllStuff();
 	cout<<"   done"<<endl;
