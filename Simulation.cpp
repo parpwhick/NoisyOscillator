@@ -23,6 +23,8 @@ Simulation::Simulation() : phys(), sim(phys) {
 //    std::cerr <<  "Default constructor called\n";
 //    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
+
+    omega = {phys.omega_rad0, phys.omega_rad0, phys.omega_ax0};
     stats = {};
 }
 
@@ -35,12 +37,11 @@ double Simulation::trap_freq(int axis, double kick) {
     v = {0.0, 0.0, 0.0};
     x = {0.0, 0.0, 0.0};
     t = 0.0;
-    update_omega(x);
 
     //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
     // kick = randn() * sigma_x
     x[axis] = kick;
-    update_state(t);
+    a = acceleration(t);
     a_t = a_tm = a;
     auto old_saturation = phys.saturation;
     phys.saturation = 0;
@@ -103,6 +104,18 @@ double Simulation::trap_freq(int axis, double kick) {
     return freq;
 }
 
+void Simulation::calibrateTrapFrequencies() {
+	using namespace consts;
+	vec freqs;
+    for (int axis = 0; axis < 3; axis++) {
+        freqs[axis] = trap_freq(axis, 1e-3);
+    }
+    std::cerr << "Frequencies: " << freqs << std::endl;
+    phys.omega_rad0 = 2 * pi * freqs[X];
+    phys.omega_ax0 = 2 * pi * freqs[Z];
+}
+
+
 inline double Simulation::randn() {
     return normal(rng);
 }
@@ -116,8 +129,7 @@ double Simulation::init_state(double T) {
     using namespace consts;
     t = sim.time_start;
     x = {0.0, 0.0, 0.0};
-//    phys.RF_phi = 2 * pi * rand();
-    update_omega(x);
+	//  phys.RF_phi = 2 * pi * rand();
 
     phys.T_init = T;
 
@@ -132,6 +144,7 @@ double Simulation::init_state(double T) {
         x[i] = sigma_i * randn();
     }
 
+    a = acceleration(t);
     a_t = a;
     a_tm = a;
     return update_energy();
@@ -144,49 +157,53 @@ double Simulation::init_kick(double kick) {
     x = {kick, kick, kick};
     v = {0, 0, 0};
     a = v;
-//    phys.RF_phi = 2 * pi * rand();
-    update_omega(x);
+	//    phys.RF_phi = 2 * pi * rand();
 
     phys.T_init = 0;
 
-    a_t = a;
+    a_t = acceleration(t);
     a_tm = a;
     return update_energy();
 }
 
-
-inline const vec & Simulation::update_omega(const vec & pos) {
-    auto omega_x = phys.omega_rad0 / square(1 + pos[Z] * phys.zk);
+vec Simulation::acceleration(double tt){
+	auto omega_x = phys.omega_rad0; // * (phys.real_potential) ? 1. / square(1 + x[Z] * phys.zk) : 1.0;
     auto omega_z = phys.omega_ax0;
 
     // NO MICROMOTION, PONDEROMOTIVE ONLY
     omega = {omega_x, omega_x, omega_z};
 
-    return omega;
-}
-
-void Simulation::update_state(double tt){
     // radial potential energy / (M/2)
     auto e_rad_pot = (square(omega[X]) * square(x[X]) + square(omega[Y]) * square(x[Y]));
+
     // total radial energy / (M/2)
     auto e_rad = e_rad_pot + square(v[X]) + square(v[Y]);
     auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
+    energies = {0.5 * e_rad, 0.5 * e_ax, 0.5 * (e_rad+e_ax)};
 
-    double phase = 2 * consts::pi * phys.RF_omega * tt + phys.RF_phi;
-    double rfvoltage = std::cos(phase) * phys.RF_amplitude;
+    if (phys.real_potential){
+    	double phase = phys.RF_omega * tt + phys.RF_phi;
+    	double rfvoltage = std::cos(phase) * phys.RF_amplitude;
 
-    auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
-    a = { -rfvoltage * square(omega[X]) * x[X], // X
-          +rfvoltage * square(omega[Y]) * x[Y], // Y
-          -square(omega[Z]) * x[Z] + z_derivative // Z
-    };
+    	auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
 
-    energies = {0.5 * phys.M * e_rad, 0.5 * phys.M * e_ax, 0.5 * phys.M * (e_rad+e_ax)};
+    	vec acc = { -rfvoltage * square(omega[X]) * x[X], // X
+        	  +rfvoltage * square(omega[Y]) * x[Y],       // Y
+          	-square(omega[Z]) * x[Z] + z_derivative     // Z
+    	};
+
+    	return acc;
+	} else {
+		vec acc = { -square(omega[X]) * x[X], 
+					-square(omega[Y]) * x[Y],
+					-square(omega[Z]) * x[Z] };
+		return acc;
+	}
 }
 
+
 double Simulation::update_energy() {
-    update_omega(x);
-    update_state(t);
+    acceleration(t);
     return energies[2];
 }
 
@@ -210,7 +227,7 @@ void Simulation::read_state(std::ostream & out){
 void Simulation::print_state(std::ostream & out){
 //    auto list = ;
     out << t << " ";
-    for(auto & k  : {x, v, omega,  energies}){
+    for(auto & k  : {x, v, energies}){
         for (auto & p : k){
             out << p << " ";
         }
@@ -230,9 +247,8 @@ void Simulation::step(){
     }
 
     //update acceleration on the new position
-    update_omega(x); //it is already x(t+dt)
-    vec a_old = a;
-    update_state(t+dt);
+    vec a_old = a; //it is already x(t+dt)
+    a = acceleration(t+dt);
 
     //update speed
     for (int i=0; i<3; i++){
@@ -259,11 +275,9 @@ void Simulation::step(){
 //        x[i] += (v[i] + dt / 6.0 * (4* a[i] - a_tm[i])) * dt;
 //    }
 //
-//    //update acceleration on the new position
-//    update_omega(x); //it is already x(t+dt)
-//    a_tm = a_t;
-//    a_t = a;
-//    update_state(t+dt);
+//    // update acceleration on the new position
+//    vec a_old = a; //it is already x(t+dt)
+//    a = acceleration(t+dt);
 //
 //    //update speed
 //    for (int i=0; i<3; i++){
@@ -281,20 +295,23 @@ void Simulation::step(){
 //    stats.N++;
 //}
 
+static const vec directionXYZ = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
+static const vec directionZ = {0, 0, -1};
+
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     using namespace consts;
     // Momentum of a photon at the Ca+ resonance, about 1.669e-27 [J s / m]
-    static const double resonance_k = 2 * pi * resonance / C;
-    static const vec direction = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
+    static const double ksp = 2 * pi  / wavelength;
+    static const vec direction = directionZ;
+    static const double gamma2 = square(consts::gamma);
 
-    double absorb_k = resonance_k - 2 * pi * phys.detuning;
-    vec laser_k = {absorb_k * direction[X], absorb_k * direction[Y], absorb_k * direction[Z]};
+    double klaser = ksp + 2 * pi * phys.detuning / C;
+    vec laser_k = {klaser * direction[X], klaser * direction[Y], klaser * direction[Z]};
 
-    auto kv = scalar(laser_k, v);
-
-    double term = 2 * (2 * pi * phys.detuning - kv) / consts::gamma;
+    double term = 2 * pi * phys.detuning - scalar(laser_k, v);
+    double saturation = phys.saturation * gamma2 / (square(term) + gamma2);
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
-    double scatteringrate = (phys.saturation * consts::gamma / 2) / (1 + phys.saturation + square(term));
+    double scatteringrate = consts::gamma * saturation / (1 + 2 * saturation);
 
     if (sim.dt * scatteringrate > 1) 
         std::cout << "timestep too big for laserinteraction" << std::endl;
@@ -304,7 +321,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
         // ...
 
         // count scattering events here
-        // ...
+        stats.decays++;
         
         vec rand_dir;
         for (auto &d : rand_dir)
@@ -312,9 +329,8 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
         normalize(rand_dir);
 
         for (int r = 0; r < 3; r++) {
-            v[r] += laser_k[r] / MCa  + resonance_k / MCa * rand_dir[r];
+            v[r] += laser_k[r] * hbar / MCa  + ksp * hbar / MCa * rand_dir[r];
         }
-        stats.decays++;
     }
 }
 

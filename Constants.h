@@ -38,7 +38,7 @@ namespace consts {
     // Megahertz SI units [s]
     type MHz = 1000000.;    
     // nano SI prefix
-    type nano = 1e-9;
+    type nano = 1.0e-9;
     
     // Planck constant, in [J s]
     type hbar = 1.054571726e-34;
@@ -53,13 +53,13 @@ namespace consts {
     type tau = 6.904 * nano;
     
     // Resonance linewidth, in [Hz]
-    type gamma = 1 / (2 * pi * tau);
+    type gamma = 2 * pi / tau;
     
     // Resonance laser wavelength
-    type wavelength = 396.9592e-9;
+    type wavelength = 396.95925 * nano;
 
     // Resonance laser frequency, in [Hz]
-    type resonance= C / wavelength;
+    type resonance_f = C / wavelength;
 }
 
 #endif /* CONSTANTS_H */

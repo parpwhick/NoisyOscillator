@@ -47,10 +47,14 @@ public:
     void laserXYZ();
     // Calculate trap frequency on one axis
     double trap_freq(int axis, double kick = 1e-5);
+    // Calculate ponderomotive frequencies by measuring them
+    void calibrateTrapFrequencies();
+
     // Update the position-dependent trap frequency
-    const vec & update_omega(const vec & pos);
+    //const vec & update_omega(const vec & pos);
+    
     // Calculate forces and energies
-    void update_state(double time);
+    vec acceleration(double time);
     // Return speed
     double speed();
     // Calculate energy

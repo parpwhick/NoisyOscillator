@@ -8,7 +8,8 @@
 // Physical parameters
 
 struct Physical {
-    
+    // use pure harmonic oscillator, or realistic potential
+    bool real_potential;    
     // Frequency of the RF electrodes
     double RF_omega;
     // Phase of the RF electrodes
@@ -88,6 +89,9 @@ struct Physical {
 
         // initial temperature
         T_init = 0.080; // 80 mK
+
+        // set realistic potential
+        real_potential = true;
         
         set_dependent_parameters();
     }
