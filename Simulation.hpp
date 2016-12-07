@@ -22,6 +22,12 @@
 
 typedef std::array<double, 3> vec;
 
+enum class PotentialTypes {
+    Harmonic, 
+    Tapered,
+    Realistic
+};
+
 class Simulation {    
 private:   
     
@@ -52,13 +58,18 @@ public:
 
     // Update the position-dependent trap frequency
     //const vec & update_omega(const vec & pos);
+
+    PotentialTypes potential;
     
     // Calculate forces and energies
     vec acceleration(double time);
+    vec acceleration_taper(double time);
+    vec acceleration_microtaper(double time);
+    vec acceleration_harmonic(double time);
     // Return speed
     double speed();
     // Calculate energy
-    double update_energy();
+    double energy();
     
     // Random normal variable
     double randn();

@@ -14,6 +14,14 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
+template <typename T, std::size_t N, typename U>
+std::array<T,N> operator/ (std::array<T,N> v, U scalar){
+    std::array<T,N> r;
+    for(size_t i = 0; i < N; i++)
+        r[i] = v[i] / scalar;
+    return r;
+}
+
 template <typename T, std::size_t N>
 std::ostream& operator<< (std::ostream& out, const std::array<T, N>& v) {
     out << '[';
@@ -71,9 +79,9 @@ public:
 
 };
 
-const int X = 0;
-const int Y = 1;
-const int Z = 2;
+constexpr int X = 0;
+constexpr int Y = 1;
+constexpr int Z = 2;
 
 inline double scalar(const vec& a, const vec&b) {
     return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];

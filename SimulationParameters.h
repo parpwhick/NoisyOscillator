@@ -3,13 +3,12 @@
 
 #include "Constants.h"
 #include <cmath>
+#include <iostream>
 //using namespace consts;
 
 // Physical parameters
 
-struct Physical {
-    // use pure harmonic oscillator, or realistic potential
-    bool real_potential;    
+struct Physical { 
     // Frequency of the RF electrodes
     double RF_omega;
     // Phase of the RF electrodes
@@ -37,19 +36,16 @@ struct Physical {
     double tan_angle;
 
     //Distance rods to trap center
-    double x0 = 1.0 * 0.001;
-
-    //Distance endcaps to trap center
-    double z0 = 4.0 * 0.001;
+    double R0 = 1.0 * 0.001;
     
-    // tan(alpha) / x0 parameter, used for the determination of omega_rad
+    // x0 / tan(alpha) parameter, used for the determination of omega_rad
     double zk;
     
     //Voltage on the endcaps
     //double Uz = 0.16;
 
     //Center of trap along z axis
-    double zOffset = 0.0;
+    double z0 = 0.0;
     
     // Frequency radial (average, in Hz)
     double omega_rad0;
@@ -63,14 +59,15 @@ struct Physical {
         double rad_angle = angle / 180. * pi;
         tan_angle = std::tan(rad_angle);
         qDivM = consts::electronCharge / M;
-        zk = tan_angle / x0;
-        
+        zk = R0 / tan_angle;  
+        std::cerr << "Setting zk to: " << zk << std::endl;
     }
     
     Physical() {        
         using namespace consts;
         RF_omega = 2 * pi * 22 * MHz;
-        RF_amplitude = 600;
+        RF_amplitude = 38;
+        angle = 10.0;
         
         // Pulse (Frequency) radial (average, in Hz)
         omega_rad0 = 2 * pi * 0.440 * MHz;
@@ -89,9 +86,6 @@ struct Physical {
 
         // initial temperature
         T_init = 0.080; // 80 mK
-
-        // set realistic potential
-        real_potential = true;
         
         set_dependent_parameters();
     }

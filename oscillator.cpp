@@ -130,15 +130,13 @@ void laser_cool(){
     single_ion.sim.time_end = 0.0005;
     single_ion.sim.print_every = 200;
 
-    single_ion.phys.real_potential = true;
+    single_ion.potential = PotentialTypes::Tapered;
     single_ion.calibrateTrapFrequencies();    
     single_ion.init_state(0.0);
 
-    single_ion.x[0] = 10e-6;
-
     // run with lasers
-    // single_ion.phys.saturation = 3;
-    // single_ion.run();
+    single_ion.phys.saturation = 3;
+    single_ion.run();
 
     // run without lasers
     single_ion.phys.saturation = 0;
@@ -148,16 +146,38 @@ void laser_cool(){
     single_ion.read_state(std::cerr);
 }
 
+void test_taper(){
+    using namespace consts;
+    
+    Simulation sim;
+    sim.sim.dt = consts::tau / 100;
+    sim.phys.saturation = 0;
+    sim.sim.time_end = 0.0001;
+    sim.sim.print_every = 100;
+    sim.potential = PotentialTypes::Realistic;
+
+    vec freqs;
+    for (int axis = 0; axis < 3; axis++) {
+        freqs[axis] = sim.trap_freq(axis, 1e-5);
+    }
+    std::cerr << "Frequencies: " << freqs << std::endl;
+
+    // kick in one direction    
+    sim.init_state(0.0);
+    sim.x[X] = 100e-6;
+    sim.x[Y] = 100e-6;
+    sim.run();
+    
+    sim.read_state(std::cerr);
+}
+
+
 int main(int , char** ) {
     using namespace consts;
-//    Simulation single_ion;
-
-//    single_ion.init_state(0.080);
-//    single_ion.read_state(cerr);
-//    run_average(single_ion, 100000, 1);
 
     //scan_frequency();
-    laser_cool();
+    // laser_cool();
+    test_taper();
     return 0;
 }
 

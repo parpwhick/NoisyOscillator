@@ -19,7 +19,7 @@
 #include "Utilities.h"
 
 
-Simulation::Simulation() : phys(), sim(phys) {
+Simulation::Simulation() : phys(), sim(phys), potential(PotentialTypes::Tapered) {
 //    std::cerr <<  "Default constructor called\n";
 //    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
@@ -147,7 +147,7 @@ double Simulation::init_state(double T) {
     a = acceleration(t);
     a_t = a;
     a_tm = a;
-    return update_energy();
+    return energy();
 }
 
 double Simulation::init_kick(double kick) {
@@ -163,48 +163,74 @@ double Simulation::init_kick(double kick) {
 
     a_t = acceleration(t);
     a_tm = a;
-    return update_energy();
+    return energy();
 }
 
-vec Simulation::acceleration(double tt){
-	auto omega_x = phys.omega_rad0; // * (phys.real_potential) ? 1. / square(1 + x[Z] * phys.zk) : 1.0;
-    auto omega_z = phys.omega_ax0;
-
-    // NO MICROMOTION, PONDEROMOTIVE ONLY
-    omega = {omega_x, omega_x, omega_z};
-
+double Simulation::energy() {
     // radial potential energy / (M/2)
     auto e_rad_pot = (square(omega[X]) * square(x[X]) + square(omega[Y]) * square(x[Y]));
 
     // total radial energy / (M/2)
     auto e_rad = e_rad_pot + square(v[X]) + square(v[Y]);
     auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
-    energies = {0.5 * e_rad, 0.5 * e_ax, 0.5 * (e_rad+e_ax)};
+    auto e_tot = e_rad + e_ax;
+    energies = {0.5 * e_rad, 0.5 * e_ax, 0.5 * e_tot};
+    return 0.5 * e_tot;
+}
 
-    if (phys.real_potential){
-    	double phase = phys.RF_omega * tt + phys.RF_phi;
-    	double rfvoltage = std::cos(phase) * phys.RF_amplitude;
-
-    	auto z_derivative = -(4/2) * e_rad_pot / (x[Z] + 1 / phys.zk);
-
-    	vec acc = { -rfvoltage * square(omega[X]) * x[X], // X
-        	  +rfvoltage * square(omega[Y]) * x[Y],       // Y
-          	-square(omega[Z]) * x[Z] + z_derivative     // Z
-    	};
-
-    	return acc;
-	} else {
-		vec acc = { -square(omega[X]) * x[X], 
-					-square(omega[Y]) * x[Y],
-					-square(omega[Z]) * x[Z] };
-		return acc;
+vec Simulation::acceleration(double tt) {
+	switch(potential) {
+		case PotentialTypes::Tapered:
+			return acceleration_taper(tt);
+		case PotentialTypes::Harmonic:
+			return acceleration_harmonic(tt);
+		default:
+			return acceleration_microtaper(tt);
 	}
 }
 
+// Pseudopotential with a taper
+vec Simulation::acceleration_taper(double tt){
+	auto omega_x = phys.omega_rad0 / square(1 + (x[Z]-phys.z0)/phys.zk);
+    auto omega_z = phys.omega_ax0;
 
-double Simulation::update_energy() {
-    acceleration(t);
-    return energies[2];
+    // NO MICROMOTION, PONDEROMOTIVE ONLY
+    omega = {omega_x, omega_x, omega_z};
+
+    auto z_derivative = -(square(omega[X] * x[X]) + square(omega[Y] * x[Y])) / ((x[Z]-phys.z0) + phys.zk);
+	vec acc = { -square(omega[X]) * x[X], 
+				-square(omega[Y]) * x[Y],
+				-square(omega[Z]) * (x[Z]-phys.z0) - z_derivative };
+	return acc;
+}
+
+
+vec Simulation::acceleration_harmonic(double tt){
+	auto omega_x = phys.omega_rad0; 
+    auto omega_z = phys.omega_ax0;
+
+    // NO MICROMOTION, PONDEROMOTIVE ONLY
+    omega = {omega_x, omega_x, omega_z};
+
+    vec acc = { -square(omega[X]) * x[X], 
+				-square(omega[Y]) * x[Y],
+				-square(omega[Z]) * (x[Z] - phys.z0) };
+	return acc;
+}
+
+vec Simulation::acceleration_microtaper(double tt){
+    double phase = phys.RF_omega * tt + phys.RF_phi;
+    double rad_pot_X = 2 * std::cos(phase) * phys.RF_amplitude * square(phys.omega_rad0) / square(1 + (x[Z]-phys.z0)/phys.zk);
+    double rad_pot_Y = 2 * std::cos(phase) * phys.RF_amplitude * square(phys.omega_rad0) / square(1 + (x[Z]-phys.z0)/phys.zk);
+
+    auto z_derivative = -(square(x[X]) * rad_pot_X - square(x[Y]) * rad_pot_Y) / ((x[Z]-phys.z0) + phys.zk);
+
+    vec acc = { -rad_pot_X * x[X], 		// X
+       			+rad_pot_Y * x[Y],       // Y
+       			-square(phys.omega_ax0) * (x[Z]-phys.z0) - z_derivative     // Z
+    };
+
+    return acc;
 }
 
 inline double Simulation::speed() {
@@ -215,10 +241,12 @@ inline double Simulation::speed() {
 // Print information about the state in a verbose form
 void Simulation::read_state(std::ostream & out){
     using namespace std;
+    acceleration(t);
+    energy();
     out << "Time: " << t << ", mass: " << phys.M << endl;
     out << "Position: " << x << endl;
     out << "Velocity: " << v << endl;
-    out << "Omegas:   " << omega << endl;
+    out << "Freqs:    " << omega/(2*consts::pi) << endl;
     out << "Energies: " << energies << ", kb T: " << consts::k_B * phys.T_init << endl;
     out << "Steps:    " << stats.N << ", decays: " << stats.decays << ", printouts: " << stats.printed << endl;
 }
@@ -227,7 +255,7 @@ void Simulation::read_state(std::ostream & out){
 void Simulation::print_state(std::ostream & out){
 //    auto list = ;
     out << t << " ";
-    for(auto & k  : {x, v, energies}){
+    for(auto & k  : {x, v, a}){
         for (auto & p : k){
             out << p << " ";
         }
@@ -295,8 +323,8 @@ void Simulation::step(){
 //    stats.N++;
 //}
 
-static const vec directionXYZ = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
-static const vec directionZ = {0, 0, -1};
+constexpr vec directionXYZ = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
+constexpr vec directionZ = {0, 0, -1};
 
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     using namespace consts;
