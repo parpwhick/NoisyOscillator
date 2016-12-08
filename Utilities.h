@@ -14,6 +14,8 @@
 #ifndef UTILITIES_H
 #define UTILITIES_H
 
+#include <array>
+
 template <typename T, std::size_t N, typename U>
 std::array<T,N> operator/ (std::array<T,N> v, U scalar){
     std::array<T,N> r;
