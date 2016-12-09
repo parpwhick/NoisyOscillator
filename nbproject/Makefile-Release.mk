@@ -21,8 +21,7 @@ FC=gfortran
 AS=as
 
 # Macros
-CND_PLATFORM=GNU-Linux
-CND_DLIB_EXT=so
+CND_PLATFORM=GNU-Linux-x86
 CND_CONF=Release
 CND_DISTDIR=dist
 CND_BUILDDIR=build
@@ -35,8 +34,8 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
-	${OBJECTDIR}/Simulation.o \
 	${OBJECTDIR}/SimulationParameters.o \
+	${OBJECTDIR}/Simulation.o \
 	${OBJECTDIR}/oscillator.o
 
 
@@ -62,22 +61,22 @@ LDLIBSOPTIONS=
 
 ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/noisyoscillator: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/noisyoscillator ${OBJECTFILES} ${LDLIBSOPTIONS}
-
-${OBJECTDIR}/Simulation.o: Simulation.cpp 
-	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/Simulation.o Simulation.cpp
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/noisyoscillator ${OBJECTFILES} ${LDLIBSOPTIONS} 
 
 ${OBJECTDIR}/SimulationParameters.o: SimulationParameters.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/SimulationParameters.o SimulationParameters.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -Wall -MMD -MP -MF $@.d -o ${OBJECTDIR}/SimulationParameters.o SimulationParameters.cpp
+
+${OBJECTDIR}/Simulation.o: Simulation.cpp 
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -Wall -MMD -MP -MF $@.d -o ${OBJECTDIR}/Simulation.o Simulation.cpp
 
 ${OBJECTDIR}/oscillator.o: oscillator.cpp 
 	${MKDIR} -p ${OBJECTDIR}
-	${RM} "$@.d"
-	$(COMPILE.cc) -O2 -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/oscillator.o oscillator.cpp
+	${RM} $@.d
+	$(COMPILE.cc) -O2 -Wall -MMD -MP -MF $@.d -o ${OBJECTDIR}/oscillator.o oscillator.cpp
 
 # Subprojects
 .build-subprojects:

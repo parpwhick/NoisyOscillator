@@ -18,14 +18,17 @@
 #include <string>
 #include "Utilities.h"
 
+Physical physical{};
+Parameters  simpar{physical};
 
-Simulation::Simulation() : phys(), sim(phys), potential(PotentialTypes::Tapered) {
+
+
+Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes::Tapered) {
 //    std::cerr <<  "Default constructor called\n";
 //    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
 
     omega = {phys.omega_rad0, phys.omega_rad0, phys.omega_ax0};
-    stats = {};
 }
 
 Simulation::~Simulation() {
@@ -38,11 +41,16 @@ double Simulation::trap_freq(int axis, double kick) {
     x = {0.0, 0.0, 0.0};
     t = 0.0;
 
+
     //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
     // kick = randn() * sigma_x
     x[axis] = kick;
     a = acceleration(t);
     a_t = a_tm = a;
+
+    if(potential != PotentialTypes::Realistic)
+        return omega[axis] / 2 / pi;
+
     auto old_saturation = phys.saturation;
     phys.saturation = 0;
     
@@ -93,6 +101,9 @@ double Simulation::trap_freq(int axis, double kick) {
             break;
 
         step();
+        if(std::abs(x[axis])> 2 * kick){
+            throw std::runtime_error("The oscillator has run-away behavior, reduce time steps.");
+        }
         x_avg += alpha * (x[axis] - x_avg);
     }
 
@@ -108,7 +119,7 @@ void Simulation::calibrateTrapFrequencies() {
 	using namespace consts;
 	vec freqs;
     for (int axis = 0; axis < 3; axis++) {
-        freqs[axis] = trap_freq(axis, 1e-3);
+        freqs[axis] = trap_freq(axis, 10.0e-6);
     }
     std::cerr << "Frequencies: " << freqs << std::endl;
     phys.omega_rad0 = 2 * pi * freqs[X];
@@ -190,12 +201,12 @@ vec Simulation::acceleration(double tt) {
 }
 
 // Pseudopotential with a taper
-vec Simulation::acceleration_taper(double tt){
-	auto omega_x = phys.omega_rad0 / square(1 + (x[Z]-phys.z0)/phys.zk);
+vec Simulation::acceleration_taper(double){
+    auto omega_x = phys.omega_rad0 / square(1 + (x[Z]-phys.z0)/phys.zk);
     auto omega_z = phys.omega_ax0;
 
     // NO MICROMOTION, PONDEROMOTIVE ONLY
-    omega = {omega_x, omega_x, omega_z};
+    omega = {omega_x, omega_x * phys.omega_ratio, omega_z};
 
     auto z_derivative = -(square(omega[X] * x[X]) + square(omega[Y] * x[Y])) / ((x[Z]-phys.z0) + phys.zk);
 	vec acc = { -square(omega[X]) * x[X], 
@@ -205,12 +216,9 @@ vec Simulation::acceleration_taper(double tt){
 }
 
 
-vec Simulation::acceleration_harmonic(double tt){
-	auto omega_x = phys.omega_rad0; 
-    auto omega_z = phys.omega_ax0;
-
+vec Simulation::acceleration_harmonic(double){
     // NO MICROMOTION, PONDEROMOTIVE ONLY
-    omega = {omega_x, omega_x, omega_z};
+    omega = {phys.omega_rad0, phys.omega_rad0 * phys.omega_ratio, phys.omega_ax0};
 
     vec acc = { -square(omega[X]) * x[X], 
 				-square(omega[Y]) * x[Y],
@@ -220,8 +228,9 @@ vec Simulation::acceleration_harmonic(double tt){
 
 vec Simulation::acceleration_microtaper(double tt){
     double phase = phys.RF_omega * tt + phys.RF_phi;
-    double rad_pot_X = 2 * std::cos(phase) * phys.RF_amplitude * square(phys.omega_rad0) / square(1 + (x[Z]-phys.z0)/phys.zk);
-    double rad_pot_Y = 2 * std::cos(phase) * phys.RF_amplitude * square(phys.omega_rad0) / square(1 + (x[Z]-phys.z0)/phys.zk);
+    double rad_pot_X = 2 * std::cos(phase) * phys.RF_amplitude *
+            square(phys.omega_rad0) / square(1 + (x[Z]-phys.z0)/phys.zk);
+    double rad_pot_Y = rad_pot_X * phys.omega_ratio;
 
     auto z_derivative = -(square(x[X]) * rad_pot_X - square(x[Y]) * rad_pot_Y) / ((x[Z]-phys.z0) + phys.zk);
 
@@ -238,17 +247,29 @@ inline double Simulation::speed() {
 }
 
 
+void statistics::do_stats(vec& omegas, std::ostream & out) {
+using namespace std;
+    double millit = 1000 * consts::m_over_kb;
+    out << "Avg pos:  " << avg_x / points << endl;
+    out << "Avg vel:  " << avg_v / points << endl;
+    vec varx = avg_x2/points - square(avg_x/points);
+    vec varv = avg_v2/points - square(avg_v/points);
+    out << "Var x:    " << varx << endl;
+    out << "Var v:    " << varv << endl;
+    out << "Temps x:  " << varv * millit << endl;
+    out << "Temps v:  " << varx * square(omegas) * millit << endl;
+    out << "Steps:    " << N << ", decays: " << decays << ", printouts: " << printed << endl;
+}
+
 // Print information about the state in a verbose form
 void Simulation::read_state(std::ostream & out){
     using namespace std;
     acceleration(t);
     energy();
     out << "Time: " << t << ", mass: " << phys.M << endl;
-    out << "Position: " << x << endl;
-    out << "Velocity: " << v << endl;
     out << "Freqs:    " << omega/(2*consts::pi) << endl;
-    out << "Energies: " << energies << ", kb T: " << consts::k_B * phys.T_init << endl;
-    out << "Steps:    " << stats.N << ", decays: " << stats.decays << ", printouts: " << stats.printed << endl;
+    out << "Detuning: " << phys.detuning / consts::MHz << endl;
+    stats.do_stats(omega, out);
 }
 
 // Print a line brief with the information
@@ -260,8 +281,19 @@ void Simulation::print_state(std::ostream & out){
             out << p << " ";
         }
     }
-    out << std::endl;
+    out << stats.decays << std::endl;
     stats.printed++;
+}
+
+// Print a line brief with the information
+void Simulation::do_statistics(){
+    if(t <= sim.time_engine_start)
+        return;
+    stats.avg_x = stats.avg_x + x;
+    stats.avg_x2 = stats.avg_x2 + square(x);
+    stats.avg_v = stats.avg_v + v;
+    stats.avg_v2 = stats.avg_v2 + square(v);
+    stats.points++;
 }
 
 //  Step forward of dt by using the Velocity Verlet algorithm
@@ -323,28 +355,39 @@ void Simulation::step(){
 //    stats.N++;
 //}
 
-constexpr vec directionXYZ = {1 / std::sqrt(3), 1 / std::sqrt(3), 1 / std::sqrt(3)};
-constexpr vec directionZ = {0, 0, -1};
+constexpr vec directionXYZ = {1 / std::sqrt(3.0), 1 / std::sqrt(3.0), 1 / std::sqrt(3.0)};
+constexpr vec directionZ = {0, 0, 1};
+constexpr vec directionX = {1, 0, 0};
+constexpr vec directionY = {0, 1, 0};
 
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
-    using namespace consts;
-    // Momentum of a photon at the Ca+ resonance, about 1.669e-27 [J s / m]
-    static const double ksp = 2 * pi  / wavelength;
-    static const vec direction = directionZ;
-    static const double gamma2 = square(consts::gamma);
-
-    double klaser = ksp + 2 * pi * phys.detuning / C;
-    vec laser_k = {klaser * direction[X], klaser * direction[Y], klaser * direction[Z]};
-
-    double term = 2 * pi * phys.detuning - scalar(laser_k, v);
-    double saturation = phys.saturation * gamma2 / (square(term) + gamma2);
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
-    double scatteringrate = consts::gamma * saturation / (1 + 2 * saturation);
+    using namespace consts;
 
-    if (sim.dt * scatteringrate > 1) 
+    // Wavevector of a photon at the Ca+ resonance
+    static const double ksp = 2 * pi  / wavelength;
+    static const vec direction = directionXYZ;
+
+    // Here, the actual frequency of the laser could be used,
+    // but the error is of the order of (delta/actual laser freq) ~ 10^-9
+    double klaser = ksp + 2 * pi * phys.detuning / C;
+    // freq detuning = vparallel / C
+    // delta eff = 2 * pi * (delta - vparallel/C)
+    double delta_eff = 2 * pi * phys.detuning - klaser * scalar(direction, v);
+    double s = phys.saturation;
+
+    // V1
+    //    double saturation = phys.saturation * 1 / (square(term/consts::gamma) + 1);
+    //    double scatteringrate = consts::gamma * saturation / (1 + 2 * saturation);
+
+    // V2
+    double delta_norm = delta_eff / consts::gamma;
+    double scatteringrate = consts::gamma/2 * s / (1 + s + 4 * square(delta_norm) );
+
+    if (sim.dt * scatteringrate > 1)
         std::cout << "timestep too big for laserinteraction" << std::endl;
 
-    if (rand() <= sim.dt * scatteringrate) {//photonabsorbed
+    if (rand() < sim.dt * scatteringrate) {//photonabsorbed
         // step time after the scattering
         // ...
 
@@ -352,12 +395,12 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
         stats.decays++;
         
         vec rand_dir;
-        for (auto &d : rand_dir)
-            d = randn();
+        for (int i = 0; i < 3; i++)
+            rand_dir[i] = randn();
         normalize(rand_dir);
 
         for (int r = 0; r < 3; r++) {
-            v[r] += laser_k[r] * hbar / MCa  + ksp * hbar / MCa * rand_dir[r];
+            v[r] +=  hbar / MCa * ksp * (direction[r] + rand_dir[r]);
         }
     }
 }
@@ -371,6 +414,7 @@ void Simulation::run(){
     while (t < sim.time_end){
         if(stats.N % sim.print_every == 0)
             print_state();
+        do_statistics();
         step();
     }
 }

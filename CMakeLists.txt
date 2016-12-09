@@ -19,6 +19,9 @@ set (Sources
 	oscillator.cpp  
 	Simulation.cpp  
 	SimulationParameters.cpp
+	Constants.h
+	SimulationParameters.h
+	Utilities.h
 )
 
 add_executable (${projectName} ${Sources})

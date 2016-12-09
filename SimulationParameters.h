@@ -53,6 +53,8 @@ struct Physical {
     // Frequency axial (average, in Hz)
     double omega_ax0;
     
+    // Detuning ratio for the second radial frequency, 1+eps
+    double omega_ratio;
     
     void set_dependent_parameters(){        
         using namespace consts;
@@ -75,8 +77,10 @@ struct Physical {
         // Pulse (Frequency) axial (average, in Hz)
         omega_ax0  = 2 * pi * 0.080 * MHz;
 
+        omega_ratio = 1.05;
+
         // detuning of the laser in Hz
-        detuning = -consts::gamma;
+        detuning = -consts::gamma/(2 * pi)/2;
 
         // Mass of Calcium
         M = MCa;

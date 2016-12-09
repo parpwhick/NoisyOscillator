@@ -15,6 +15,10 @@
 #define UTILITIES_H
 
 #include <array>
+#include <vector>
+#ifndef vec
+typedef std::array<double, 3> vec;
+#endif
 
 template <typename T, std::size_t N, typename U>
 std::array<T,N> operator/ (std::array<T,N> v, U scalar){
@@ -22,6 +26,35 @@ std::array<T,N> operator/ (std::array<T,N> v, U scalar){
     for(size_t i = 0; i < N; i++)
         r[i] = v[i] / scalar;
     return r;
+}
+
+template <typename T, std::size_t N, typename U>
+std::array<T,N> operator* (std::array<T,N> v, U scalar){
+    std::array<T,N> r;
+    for(size_t i = 0; i < N; i++)
+        r[i] = v[i] * scalar;
+    return r;
+}
+
+template <typename T, std::size_t N>
+std::array<T,N> operator+ (std::array<T,N> v, std::array<T,N> u){
+    std::array<T,N> r;
+    for(size_t i = 0; i < N; i++)
+        r[i] = v[i] + u[i];
+    return r;
+}
+
+template <typename T, std::size_t N>
+std::array<T,N> operator* (std::array<T,N> v, std::array<T,N> u){
+    std::array<T,N> r;
+    for(size_t i = 0; i < N; i++)
+        r[i] = v[i] * u[i];
+    return r;
+}
+
+template <typename T, std::size_t N>
+std::array<T,N> operator- (std::array<T,N> v, std::array<T,N> u){
+    return v + u * (-1);
 }
 
 template <typename T, std::size_t N>
@@ -86,7 +119,7 @@ constexpr int Y = 1;
 constexpr int Z = 2;
 
 inline double scalar(const vec& a, const vec&b) {
-    return a[X] * b[X] + a[Y] * b[Y] + a[Z] * b[Z];
+    return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
 inline double module(const vec & vector) {
@@ -108,6 +141,19 @@ inline double sinc(double x){
     //for x > 1e-8 (sqrt[eps]), sinc(x)==1.0
     return (std::abs(x)>1e-8) ? (std::sin(x)/x) : x;
 }
+
+template <typename T, std::size_t N>
+std::array<T,N> square (std::array<T,N> v){
+    std::array<T,N> r;
+    for(size_t i = 0; i < N; i++)
+        r[i] = square(v[i]);
+    return r;
+}
+
+
+constexpr vec zeros = vec{0.0,0.0,0.0};
+
+
 
 
 #endif /* UTILITIES_H */

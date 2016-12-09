@@ -53,13 +53,15 @@ namespace consts {
     type tau = 6.904 * nano;
     
     // Resonance linewidth, in [Hz]
-    type gamma = 2 * pi / tau;
+    type gamma = 1 / (tau);
     
     // Resonance laser wavelength
     type wavelength = 396.95925 * nano;
 
     // Resonance laser frequency, in [Hz]
     type resonance_f = C / wavelength;
+
+    type m_over_kb = 0.00480933;
 }
 
 #endif /* CONSTANTS_H */

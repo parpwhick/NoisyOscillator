@@ -15,17 +15,32 @@
 #define SIMULATION_HPP
 
 #include "SimulationParameters.h"
+#include "Utilities.h"
 #include <random>
 #include <ctime>
 #include <array>
 #include <iostream>
 
-typedef std::array<double, 3> vec;
-
 enum class PotentialTypes {
     Harmonic, 
     Tapered,
     Realistic
+};
+
+struct statistics {
+    int N;
+    int decays;
+    int printed;
+    int points;
+
+    // averages
+    vec avg_x = zeros, avg_x2 = zeros, avg_v = zeros, avg_v2 = zeros;
+
+    statistics(){
+        points = N = decays = printed = 0;
+    }
+
+    void do_stats(vec &omegas, std::ostream& out);
 };
 
 class Simulation {    
@@ -40,8 +55,8 @@ public:
     Simulation();
     ~Simulation();
     
-    Physical  phys;
-    Parameters sim;
+    Physical &  phys;
+    Parameters & sim;
     
     // Init state with temperature T on all axes
     double init_state(double T);
@@ -55,12 +70,11 @@ public:
     double trap_freq(int axis, double kick = 1e-5);
     // Calculate ponderomotive frequencies by measuring them
     void calibrateTrapFrequencies();
+    // Perform statistics
+    void do_statistics();
 
-    // Update the position-dependent trap frequency
-    //const vec & update_omega(const vec & pos);
-
-    PotentialTypes potential;
-    
+    // define the type of potential, switching below the accelerations below:
+    PotentialTypes potential;    
     // Calculate forces and energies
     vec acceleration(double time);
     vec acceleration_taper(double time);
@@ -83,11 +97,7 @@ public:
     void run();
 
     // Statistics of the simulation
-    struct {
-        int N;
-        int decays;
-        int printed;
-    } stats;
+    struct statistics stats;
     
     // current time
     double t;
