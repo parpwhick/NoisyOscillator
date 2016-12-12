@@ -21,6 +21,7 @@ set (Sources
 	SimulationParameters.cpp
 	Constants.h
 	SimulationParameters.h
+	Utilities.cpp
 	Utilities.h
 )
 

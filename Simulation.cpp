@@ -29,6 +29,12 @@ Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes
     init_state(phys.T_init);
 
     omega = {phys.omega_rad0, phys.omega_rad0, phys.omega_ax0};
+
+    fileName = autoFileName();
+    outFile.open(fileName, std::fstream::out);
+    if(!outFile.good())
+        throw std::runtime_error("Could not open file " + fileName + " for output. Aborting");
+
 }
 
 Simulation::~Simulation() {
@@ -413,7 +419,7 @@ void Simulation::run(){
 
     while (t < sim.time_end){
         if(stats.N % sim.print_every == 0)
-            print_state();
+            print_state(outFile);
         do_statistics();
         step();
     }

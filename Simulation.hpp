@@ -19,6 +19,7 @@
 #include <random>
 #include <ctime>
 #include <array>
+#include <fstream>
 #include <iostream>
 
 enum class PotentialTypes {
@@ -51,6 +52,9 @@ private:
     std::normal_distribution<> normal{0,1};
     std::uniform_real_distribution<> unif{0,1};
     
+    std::string fileName;
+    std::fstream outFile;
+
 public:    
     Simulation();
     ~Simulation();

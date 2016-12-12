@@ -16,6 +16,9 @@
 
 #include <array>
 #include <vector>
+#include <sstream>
+#include <ctime>
+#include <cmath>
 #ifndef vec
 typedef std::array<double, 3> vec;
 #endif
@@ -152,9 +155,7 @@ std::array<T,N> square (std::array<T,N> v){
 
 
 constexpr vec zeros = vec{0.0,0.0,0.0};
-
-
-
+std::string autoFileName();
 
 #endif /* UTILITIES_H */
 
