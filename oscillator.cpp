@@ -125,10 +125,10 @@ void laser_cool(){
     Simulation single_ion;
     single_ion.sim.dt = consts::tau / 20;
     single_ion.init_state(0.2);
-    double tottime = 2 * 0.005;
+    double tottime = 0.002;
     single_ion.sim.time_end = tottime;
     single_ion.sim.time_engine_start = tottime / 3;
-    single_ion.sim.print_every = 5000;
+    single_ion.sim.print_every = 300;
 
     single_ion.potential = PotentialTypes::Tapered;
     single_ion.calibrateTrapFrequencies();
@@ -138,8 +138,8 @@ void laser_cool(){
 
     // run with lasers
     single_ion.stats = statistics();
-    single_ion.phys.saturation = 0.2;
-    single_ion.phys.detuning = 13 * MHz;
+    single_ion.phys.saturation = 1;
+    single_ion.phys.detuning = -10 * MHz;
     single_ion.run();
     single_ion.read_state(std::cerr);
 

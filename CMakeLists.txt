@@ -1,4 +1,4 @@
-#cmake_minimum_required(VERSION 3.1.0 FATAL_ERROR)
+cmake_minimum_required(VERSION 2.8.5)
 set (CMAKE_CXX_STANDARD 11y)
 set (CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -11,13 +11,14 @@ endif()
 set (projectName NoisyOscillator)
 
 
-	
+include_directories(Eigen)	
 # Find includes in corresponding build directories
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 	
 set (Sources
 	oscillator.cpp  
 	Simulation.cpp  
+	Simulation.hpp
 	SimulationParameters.cpp
 	Constants.h
 	SimulationParameters.h

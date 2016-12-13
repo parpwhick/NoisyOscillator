@@ -19,9 +19,6 @@
 #include <sstream>
 #include <ctime>
 #include <cmath>
-#ifndef vec
-typedef std::array<double, 3> vec;
-#endif
 
 template <typename T, std::size_t N, typename U>
 std::array<T,N> operator/ (std::array<T,N> v, U scalar){
@@ -121,16 +118,17 @@ constexpr int X = 0;
 constexpr int Y = 1;
 constexpr int Z = 2;
 
-inline double scalar(const vec& a, const vec&b) {
+typedef std::array<double, 3> staticvec;
+inline double scalar(const staticvec& a, const staticvec&b) {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
 
-inline double module(const vec & vector) {
+inline double module(const staticvec & vector) {
     double m = scalar(vector, vector);
     return std::sqrt(m);
 }
 
-inline double normalize(vec& vector) {
+inline double normalize(staticvec& vector) {
     auto m = module(vector);
     vector= {vector[X] / m, vector[Y] / m, vector[Z] / m};
     return m;
@@ -154,7 +152,7 @@ std::array<T,N> square (std::array<T,N> v){
 }
 
 
-constexpr vec zeros = vec{0.0,0.0,0.0};
+constexpr auto zeros = staticvec{0.0,0.0,0.0};
 std::string autoFileName();
 
 #endif /* UTILITIES_H */

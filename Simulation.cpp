@@ -11,24 +11,27 @@
  * Created on February 3, 2016, 11:06 AM
  */
 
+
+#include "Eigen/Dense"
 #include "Simulation.hpp"
 #include "Constants.h"
 #include <iostream>
 #include <ostream>
 #include <string>
+
 #include "Utilities.h"
 
 Physical physical{};
 Parameters  simpar{physical};
-
-
 
 Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes::Tapered) {
 //    std::cerr <<  "Default constructor called\n";
 //    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
 
-    omega = {phys.omega_rad0, phys.omega_rad0, phys.omega_ax0};
+    decays = printed = N = 0;
+
+    omega << phys.omega_rad0, phys.omega_rad0, phys.omega_ax0;
 
     fileName = autoFileName();
     outFile.open(fileName, std::fstream::out);
@@ -43,14 +46,14 @@ Simulation::~Simulation() {
 double Simulation::trap_freq(int axis, double kick) {
     using namespace consts;
 
-    v = {0.0, 0.0, 0.0};
-    x = {0.0, 0.0, 0.0};
+    v.setZero();
+    x.setZero();
     t = 0.0;
 
 
     //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
     // kick = randn() * sigma_x
-    x[axis] = kick;
+    x(axis) = kick;
     a = acceleration(t);
     a_t = a_tm = a;
 
@@ -145,15 +148,15 @@ double Simulation::init_state(double T) {
     using namespace std;
     using namespace consts;
     t = sim.time_start;
-    x = {0.0, 0.0, 0.0};
+    x.setZero();
 	//  phys.RF_phi = 2 * pi * rand();
 
     phys.T_init = T;
 
     // https://en.wikipedia.org/wiki/Maxwell%E2%80%93Boltzmann_distribution#Distribution_for_the_velocity_vector
     double sigma = std::sqrt(k_B * T / phys.M);
-    for (auto & vv : v) {
-        vv = sigma * randn();
+    for (int i = 0; i < 3; i++) {
+        v[i] = sigma * randn();
     }
 
     for (int i = 0; i < 3; i++) {
@@ -171,8 +174,8 @@ double Simulation::init_kick(double kick) {
     using namespace std;
     using namespace consts;
     t = sim.time_start;
-    x = {kick, kick, kick};
-    v = {0, 0, 0};
+    x.setConstant(kick);
+    v.setZero();
     a = v;
 	//    phys.RF_phi = 2 * pi * rand();
 
@@ -191,7 +194,7 @@ double Simulation::energy() {
     auto e_rad = e_rad_pot + square(v[X]) + square(v[Y]);
     auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
     auto e_tot = e_rad + e_ax;
-    energies = {0.5 * e_rad, 0.5 * e_ax, 0.5 * e_tot};
+    energies << 0.5 * e_rad, 0.5 * e_ax, 0.5 * e_tot;
     return 0.5 * e_tot;
 }
 
@@ -212,12 +215,12 @@ vec Simulation::acceleration_taper(double){
     auto omega_z = phys.omega_ax0;
 
     // NO MICROMOTION, PONDEROMOTIVE ONLY
-    omega = {omega_x, omega_x * phys.omega_ratio, omega_z};
+    omega << omega_x, omega_x * phys.omega_ratio, omega_z;
 
     auto z_derivative = -(square(omega[X] * x[X]) + square(omega[Y] * x[Y])) / ((x[Z]-phys.z0) + phys.zk);
-	vec acc = { -square(omega[X]) * x[X], 
+    vec acc {   -square(omega[X]) * x[X],
 				-square(omega[Y]) * x[Y],
-				-square(omega[Z]) * (x[Z]-phys.z0) - z_derivative };
+                -square(omega[Z]) * (x[Z]-phys.z0) - z_derivative };
 	return acc;
 }
 
@@ -226,7 +229,7 @@ vec Simulation::acceleration_harmonic(double){
     // NO MICROMOTION, PONDEROMOTIVE ONLY
     omega = {phys.omega_rad0, phys.omega_rad0 * phys.omega_ratio, phys.omega_ax0};
 
-    vec acc = { -square(omega[X]) * x[X], 
+    vec acc { -square(omega[X]) * x[X],
 				-square(omega[Y]) * x[Y],
 				-square(omega[Z]) * (x[Z] - phys.z0) };
 	return acc;
@@ -240,7 +243,7 @@ vec Simulation::acceleration_microtaper(double tt){
 
     auto z_derivative = -(square(x[X]) * rad_pot_X - square(x[Y]) * rad_pot_Y) / ((x[Z]-phys.z0) + phys.zk);
 
-    vec acc = { -rad_pot_X * x[X], 		// X
+    vec acc   { -rad_pot_X * x[X], 		// X
        			+rad_pot_Y * x[Y],       // Y
        			-square(phys.omega_ax0) * (x[Z]-phys.z0) - z_derivative     // Z
     };
@@ -249,7 +252,7 @@ vec Simulation::acceleration_microtaper(double tt){
 }
 
 inline double Simulation::speed() {
-    return module(v);
+    return v.squaredNorm();
 }
 
 
@@ -258,13 +261,12 @@ using namespace std;
     double millit = 1000 * consts::m_over_kb;
     out << "Avg pos:  " << avg_x / points << endl;
     out << "Avg vel:  " << avg_v / points << endl;
-    vec varx = avg_x2/points - square(avg_x/points);
-    vec varv = avg_v2/points - square(avg_v/points);
+    vec varx = avg_x2/points - (avg_x/points).cwiseAbs2();
+    vec varv = avg_v2/points - (avg_v/points).cwiseAbs2();
     out << "Var x:    " << varx << endl;
     out << "Var v:    " << varv << endl;
     out << "Temps x:  " << varv * millit << endl;
-    out << "Temps v:  " << varx * square(omegas) * millit << endl;
-    out << "Steps:    " << N << ", decays: " << decays << ", printouts: " << printed << endl;
+    out << "Temps v:  " << varx.array() * omegas.array() * omegas.array() * millit << endl;
 }
 
 // Print information about the state in a verbose form
@@ -275,30 +277,25 @@ void Simulation::read_state(std::ostream & out){
     out << "Time: " << t << ", mass: " << phys.M << endl;
     out << "Freqs:    " << omega/(2*consts::pi) << endl;
     out << "Detuning: " << phys.detuning / consts::MHz << endl;
+    out << "Steps:    " << N << ", decays: " << decays << ", printouts: " << printed << endl;
     stats.do_stats(omega, out);
 }
 
 // Print a line brief with the information
-void Simulation::print_state(std::ostream & out){
-//    auto list = ;
-    out << t << " ";
-    for(auto & k  : {x, v, a}){
-        for (auto & p : k){
-            out << p << " ";
-        }
-    }
-    out << stats.decays << std::endl;
-    stats.printed++;
-}
-
-// Print a line brief with the information
 void Simulation::do_statistics(){
+    if(N % sim.print_every == 0){
+        stats.times(printed) = t;
+        stats.positions.col(printed) = x;
+        stats.velocities.col(printed) = v;
+        stats.decays(printed) = decays;
+        printed++;
+    }
     if(t <= sim.time_engine_start)
         return;
-    stats.avg_x = stats.avg_x + x;
-    stats.avg_x2 = stats.avg_x2 + square(x);
-    stats.avg_v = stats.avg_v + v;
-    stats.avg_v2 = stats.avg_v2 + square(v);
+    stats.avg_x += x;
+    stats.avg_x2 += x.cwiseAbs2();
+    stats.avg_v += v;
+    stats.avg_v2 += v.cwiseAbs2();
     stats.points++;
 }
 
@@ -308,18 +305,14 @@ void Simulation::step(){
     static double dthalf = 0.5 * dt;
 
     //update position
-    for (int i=0; i<3; i++){
-        x[i] += (v[i] + dthalf * a[i]) * dt;
-    }
+    x += (v + dthalf * a) * dt;
 
     //update acceleration on the new position
     vec a_old = a; //it is already x(t+dt)
     a = acceleration(t+dt);
 
     //update speed
-    for (int i=0; i<3; i++){
-        v[i] += dthalf * (a[i] + a_old[i]);
-    }
+    v += dthalf * (a + a_old);
 
     //apply stochastic forces
     if (phys.saturation > 0)
@@ -329,7 +322,7 @@ void Simulation::step(){
     t += dt;
     
     //update counter
-    stats.N++;
+    N++;
 }
 
 // Step forward of dt by using Beeman algorithm
@@ -358,13 +351,10 @@ void Simulation::step(){
 //    t += dt;
 //    
 //    //update counter
-//    stats.N++;
+//    N++;
 //}
 
-constexpr vec directionXYZ = {1 / std::sqrt(3.0), 1 / std::sqrt(3.0), 1 / std::sqrt(3.0)};
-constexpr vec directionZ = {0, 0, 1};
-constexpr vec directionX = {1, 0, 0};
-constexpr vec directionY = {0, 1, 0};
+const auto directionXYZ = Eigen::Vector3d::Ones().normalized();
 
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
@@ -379,7 +369,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     double klaser = ksp + 2 * pi * phys.detuning / C;
     // freq detuning = vparallel / C
     // delta eff = 2 * pi * (delta - vparallel/C)
-    double delta_eff = 2 * pi * phys.detuning - klaser * scalar(direction, v);
+    double delta_eff = 2 * pi * phys.detuning - klaser * direction.dot(v);
     double s = phys.saturation;
 
     // V1
@@ -398,28 +388,34 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
         // ...
 
         // count scattering events here
-        stats.decays++;
+        decays++;
         
-        vec rand_dir;
-        for (int i = 0; i < 3; i++)
-            rand_dir[i] = randn();
-        normalize(rand_dir);
-
-        for (int r = 0; r < 3; r++) {
-            v[r] +=  hbar / MCa * ksp * (direction[r] + rand_dir[r]);
-        }
+        auto rand_dir = vec{ randn(), randn(), randn() }.normalized();
+        v +=  hbar / MCa * ksp * (direction + rand_dir);
     }
 }
 
 
+void Simulation::initializeMatrices(){
+    int est_time_steps = (int) std::ceil((sim.time_end - t)/sim.dt);
+    int est_prints = est_time_steps / sim.print_every + 1;
+    stats.allocated_size += est_prints;
+
+    stats.positions.conservativeResize(3, stats.allocated_size);
+    stats.velocities.conservativeResize(3, stats.allocated_size);
+    stats.times.conservativeResize(stats.allocated_size);
+    stats.decays.conservativeResize(stats.allocated_size);
+
+}
+
 void Simulation::run(){
-    if (speed() < 1e-5 && module(x) < 1e-8){
+    if (speed() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }
 
+    initializeMatrices();
+
     while (t < sim.time_end){
-        if(stats.N % sim.print_every == 0)
-            print_state(outFile);
         do_statistics();
         step();
     }

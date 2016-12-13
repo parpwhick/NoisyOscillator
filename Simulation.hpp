@@ -14,6 +14,7 @@
 #ifndef SIMULATION_HPP
 #define SIMULATION_HPP
 
+#include "Eigen/Dense"
 #include "SimulationParameters.h"
 #include "Utilities.h"
 #include <random>
@@ -22,6 +23,8 @@
 #include <fstream>
 #include <iostream>
 
+typedef Eigen::Vector3d vec;
+
 enum class PotentialTypes {
     Harmonic, 
     Tapered,
@@ -29,16 +32,19 @@ enum class PotentialTypes {
 };
 
 struct statistics {
-    int N;
-    int decays;
-    int printed;
     int points;
+    int allocated_size = 0;
+    Eigen::MatrixXd positions;
+    Eigen::MatrixXd velocities;
+    Eigen::VectorXd times;
+    Eigen::VectorXi decays;
 
     // averages
-    vec avg_x = zeros, avg_x2 = zeros, avg_v = zeros, avg_v2 = zeros;
+    vec avg_x, avg_x2, avg_v, avg_v2;
 
     statistics(){
-        points = N = decays = printed = 0;
+        points = 0;
+        allocated_size = 0;
     }
 
     void do_stats(vec &omegas, std::ostream& out);
@@ -55,6 +61,7 @@ private:
     std::string fileName;
     std::fstream outFile;
 
+    void initializeMatrices();
 public:    
     Simulation();
     ~Simulation();
@@ -96,7 +103,7 @@ public:
     // Read state
     void read_state(std::ostream & out = std::cout);
     // Print state
-    void print_state(std::ostream & out = std::cout);
+//    void print_state(std::ostream & out = std::cout);
     // Run simulation from t = 0 to phys.end_time
     void run();
 
@@ -113,6 +120,12 @@ public:
     vec a;
     vec energies;
     vec omega;
+    // current timestep
+    int N;
+    // data written for later averaging
+    int printed;
+    // decays
+    int decays;
     
     // acceleration at previous step
     vec a_t;
