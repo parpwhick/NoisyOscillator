@@ -144,6 +144,8 @@ double Simulation::init_state(double T) {
     using namespace consts;
     t = sim.time_start;
     x.setZero();
+    v.setZero();
+    a = acceleration(t);
 	//  phys.RF_phi = 2 * pi * rand();
 
     phys.T_init = T;
@@ -154,6 +156,8 @@ double Simulation::init_state(double T) {
         v[i] = sigma * randn();
     }
 
+
+    omega = {phys.omega_rad0, phys.omega_rad0 * phys.omega_ratio, phys.omega_ax0};
     for (int i = 0; i < 3; i++) {
         double sigma_i = sqrt(k_B * T / phys.M / square(omega[i]));
         x[i] = sigma_i * randn();
@@ -187,7 +191,7 @@ double Simulation::energy() {
 
     // total radial energy / (M/2)
     auto e_rad = e_rad_pot + square(v[X]) + square(v[Y]);
-    auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]);
+    auto e_ax = square(v[Z]) + square(omega[Z]) * square(x[Z]-phys.z0);
     auto e_tot = e_rad + e_ax;
     energies << 0.5 * e_rad, 0.5 * e_ax, 0.5 * e_tot;
     return 0.5 * e_tot;
@@ -280,7 +284,7 @@ void Simulation::do_statistics(){
         stats.table.col(printed) = data;
         printed++;
     }
-    if(t <= sim.time_engine_start)
+    if(t < sim.time_engine_start)
         return;
     stats.avg_x += x;
     stats.avg_x2 += x.cwiseAbs2();

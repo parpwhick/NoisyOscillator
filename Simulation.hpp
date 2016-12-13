@@ -60,7 +60,6 @@ private:
     std::string fileName;
     std::fstream outFile;
 
-    void initializeMatrices();
 public:    
     Simulation();
     ~Simulation();
@@ -82,6 +81,7 @@ public:
     void calibrateTrapFrequencies(bool verbose = true);
     // Perform statistics
     void do_statistics();
+    void initializeMatrices();
 
     // define the type of potential, switching below the accelerations below:
     PotentialTypes potential;    

@@ -198,13 +198,13 @@ void scan_doppler_temperature(){
 
 void averaged_runs(){
     using namespace consts;
-    const int runs = 100;
+    const int runs = 25;
     std::vector<Simulation> traj(runs);
 
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
         traj[i].sim.dt = consts::tau / 20;
-        double tottime = 0.002;
+        double tottime = 0.008;
         traj[i].sim.time_end = tottime;
         traj[i].sim.time_engine_start = tottime / 3;
         traj[i].sim.print_every = 500;
@@ -219,15 +219,59 @@ void averaged_runs(){
         traj[i].phys.detuning = -10 * MHz;
         traj[i].run();
 
-        if(i==0){
-            traj[0].read_state(std::cerr);
-            traj[0].print_history();
-        }
         printf("%3d -- done\n", i);
+    }
+
+    traj[0].print_history();
+
+    for(int i = 0; i < runs; i++){
+        std::cerr << "----- RUN " << i << " -------" << std::endl;
+        traj[i].read_state(std::cerr);
+        std::cerr << std::endl;
     }
 
     ensemble_statistics(traj);
 }
+
+
+void initial_temperature(){
+    using namespace consts;
+    const int runs = 100000;
+    Simulation traj;
+
+
+    Eigen::Vector3d v2;
+    v2.setZero();
+
+    Eigen::Vector3d x2;
+    x2.setZero();
+
+    double ee = 0.0;
+
+    traj.sim.dt = consts::tau / 20;
+    double tottime = 0.002;
+    traj.sim.time_end = tottime;
+    traj.sim.time_engine_start = tottime / 3;
+    traj.sim.print_every = 500;
+    traj.potential = PotentialTypes::Tapered;
+    traj.calibrateTrapFrequencies(false);
+
+
+    for(int i = 0; i < runs; i++){
+        traj.stats = statistics();
+        ee += traj.init_state(0.5);
+        v2 += traj.v.cwiseAbs2();
+        x2 += (traj.x.array() * traj.omega.array()).square().matrix() * 4.8;
+        //        std::cerr << "----- RUN " << i << " -------" << std::endl;
+        //        std::cerr << "T: " << traj[i].energy()*4.8 << std::endl;
+        //        std::cerr << std::endl;
+    }
+
+    std::cerr << v2.transpose() / runs * 4.8 << std::endl;
+    std::cerr << (x2/runs).transpose() << std::endl;
+    std::cerr << ee / runs * consts::m_over_kb * 1000.0 / 3 << std::endl;
+}
+
 
 
 int main(int , char** ) {
@@ -239,6 +283,7 @@ int main(int , char** ) {
 
 //     laser_cool();
     averaged_runs();
+//    initial_temperature();
     return 0;
 }
 
