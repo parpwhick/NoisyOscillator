@@ -199,7 +199,7 @@ void scan_doppler_temperature(){
 void averaged_runs(){
     using namespace consts;
     const int runs = 100;
-    Simulation traj[runs];
+    std::vector<Simulation> traj(runs);
 
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
@@ -209,7 +209,7 @@ void averaged_runs(){
         traj[i].sim.time_engine_start = tottime / 3;
         traj[i].sim.print_every = 500;
         traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies();
+        traj[i].calibrateTrapFrequencies(false);
 
         traj[i].init_state(0.5);
 
@@ -219,25 +219,14 @@ void averaged_runs(){
         traj[i].phys.detuning = -10 * MHz;
         traj[i].run();
 
-        if(i == 0){
-            traj[0].read_state();
+        if(i==0){
+            traj[0].read_state(std::cerr);
+            traj[0].print_history();
         }
-        std::cout << "Done with worker " << i << std::endl;
+        printf("%3d -- done\n", i);
     }
 
-    Eigen::MatrixXd avg = traj[0].stats.table;
-    Eigen::MatrixXd avg2 = traj[0].stats.table.cwiseAbs2();
-    for(int i = 1; i < runs; i++){
-        avg  += traj[i].stats.table;
-        avg2 += traj[i].stats.table.cwiseAbs2();
-    }
-    avg /= runs;
-    avg2 /= runs;
-
-    print_table("avg", avg);
-    print_table("avg2", avg2);
-
-
+    ensemble_statistics(traj);
 }
 
 

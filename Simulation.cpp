@@ -118,13 +118,14 @@ double Simulation::trap_freq(int axis, double kick) {
     return freq;
 }
 
-void Simulation::calibrateTrapFrequencies() {
+void Simulation::calibrateTrapFrequencies(bool verbose) {
 	using namespace consts;
 	vec freqs;
     for (int axis = 0; axis < 3; axis++) {
         freqs[axis] = trap_freq(axis, 10.0e-6);
     }
-    std::cerr << "Frequencies: " << freqs.transpose() << std::endl;
+    if (verbose)
+        std::cerr << "Frequencies: " << freqs.transpose() << std::endl;
     phys.omega_rad0 = 2 * pi * freqs[X];
     phys.omega_ax0 = 2 * pi * freqs[Z];
 }
@@ -416,4 +417,30 @@ void Simulation::run(){
         do_statistics();
         step();
     }
+}
+
+
+
+void ensemble_statistics(std::vector<Simulation> &traj){
+    if (traj.empty())
+        return;
+    Eigen::MatrixXd avg = traj[0].stats.table;
+    Eigen::MatrixXd avg2 = traj[0].stats.table.cwiseAbs2();
+    int runs = traj.size();
+    for(int i = 1; i < runs; i++){
+        avg  += traj[i].stats.table;
+        avg2 += traj[i].stats.table.cwiseAbs2();
+
+        traj[0].stats.avg_v += traj[i].stats.avg_v;
+        traj[0].stats.avg_v2 += traj[i].stats.avg_v2;
+        traj[0].stats.avg_x += traj[i].stats.avg_x;
+        traj[0].stats.avg_x2 += traj[i].stats.avg_x2;
+        traj[0].stats.points += traj[i].stats.points;
+    }
+    avg /= runs;
+    avg2 /= runs;
+    traj[0].read_state();
+
+    print_table("avg", avg);
+    print_table("avg2", avg2);
 }

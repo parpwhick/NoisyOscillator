@@ -79,7 +79,7 @@ public:
     // Calculate trap frequency on one axis
     double trap_freq(int axis, double kick = 1e-5);
     // Calculate ponderomotive frequencies by measuring them
-    void calibrateTrapFrequencies();
+    void calibrateTrapFrequencies(bool verbose = true);
     // Perform statistics
     void do_statistics();
 
@@ -132,6 +132,7 @@ public:
     
 };
 
+void ensemble_statistics(std::vector<Simulation> &traj);
 
 
 #endif /* SIMULATION_HPP */
