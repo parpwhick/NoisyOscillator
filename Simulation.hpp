@@ -34,13 +34,10 @@ enum class PotentialTypes {
 struct statistics {
     int points;
     int allocated_size = 0;
-    Eigen::MatrixXd positions;
-    Eigen::MatrixXd velocities;
-    Eigen::VectorXd times;
-    Eigen::VectorXi decays;
+    Eigen::MatrixXd table;
 
     // averages
-    vec avg_x, avg_x2, avg_v, avg_v2;
+    Eigen::RowVector3d avg_x, avg_x2, avg_v, avg_v2;
 
     statistics(){
         points = 0;
@@ -91,8 +88,7 @@ public:
     vec acceleration_taper(double time);
     vec acceleration_microtaper(double time);
     vec acceleration_harmonic(double time);
-    // Return speed
-    double speed();
+
     // Calculate energy
     double energy();
     
@@ -103,7 +99,7 @@ public:
     // Read state
     void read_state(std::ostream & out = std::cout);
     // Print state
-//    void print_state(std::ostream & out = std::cout);
+    void print_history();
     // Run simulation from t = 0 to phys.end_time
     void run();
 

@@ -27,6 +27,4 @@ set (Sources
 )
 
 add_executable (${projectName} ${Sources})
-
 target_link_libraries(${projectName} m)
-

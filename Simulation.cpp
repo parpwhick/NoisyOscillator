@@ -32,12 +32,6 @@ Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes
     decays = printed = N = 0;
 
     omega << phys.omega_rad0, phys.omega_rad0, phys.omega_ax0;
-
-    fileName = autoFileName();
-    outFile.open(fileName, std::fstream::out);
-    if(!outFile.good())
-        throw std::runtime_error("Could not open file " + fileName + " for output. Aborting");
-
 }
 
 Simulation::~Simulation() {
@@ -130,7 +124,7 @@ void Simulation::calibrateTrapFrequencies() {
     for (int axis = 0; axis < 3; axis++) {
         freqs[axis] = trap_freq(axis, 10.0e-6);
     }
-    std::cerr << "Frequencies: " << freqs << std::endl;
+    std::cerr << "Frequencies: " << freqs.transpose() << std::endl;
     phys.omega_rad0 = 2 * pi * freqs[X];
     phys.omega_ax0 = 2 * pi * freqs[Z];
 }
@@ -251,10 +245,6 @@ vec Simulation::acceleration_microtaper(double tt){
     return acc;
 }
 
-inline double Simulation::speed() {
-    return v.squaredNorm();
-}
-
 
 void statistics::do_stats(vec& omegas, std::ostream & out) {
 using namespace std;
@@ -263,10 +253,10 @@ using namespace std;
     out << "Avg vel:  " << avg_v / points << endl;
     vec varx = avg_x2/points - (avg_x/points).cwiseAbs2();
     vec varv = avg_v2/points - (avg_v/points).cwiseAbs2();
-    out << "Var x:    " << varx << endl;
-    out << "Var v:    " << varv << endl;
-    out << "Temps x:  " << varv * millit << endl;
-    out << "Temps v:  " << varx.array() * omegas.array() * omegas.array() * millit << endl;
+    out << "Var x:    " << varx.transpose() << endl;
+    out << "Var v:    " << varv.transpose() << endl;
+    out << "Temps v:  " << varv.transpose() * millit << endl;
+    out << "Temps x:  " << (varx.array() * omegas.array().abs2() * millit).transpose() << endl;
 }
 
 // Print information about the state in a verbose form
@@ -275,7 +265,7 @@ void Simulation::read_state(std::ostream & out){
     acceleration(t);
     energy();
     out << "Time: " << t << ", mass: " << phys.M << endl;
-    out << "Freqs:    " << omega/(2*consts::pi) << endl;
+    out << "Freqs:    " << omega.transpose()/(2*consts::pi) << endl;
     out << "Detuning: " << phys.detuning / consts::MHz << endl;
     out << "Steps:    " << N << ", decays: " << decays << ", printouts: " << printed << endl;
     stats.do_stats(omega, out);
@@ -284,10 +274,9 @@ void Simulation::read_state(std::ostream & out){
 // Print a line brief with the information
 void Simulation::do_statistics(){
     if(N % sim.print_every == 0){
-        stats.times(printed) = t;
-        stats.positions.col(printed) = x;
-        stats.velocities.col(printed) = v;
-        stats.decays(printed) = decays;
+        Eigen::Matrix<double, 8, 1> data;
+        data << t , x , v , (double) decays;
+        stats.table.col(printed) = data;
         printed++;
     }
     if(t <= sim.time_engine_start)
@@ -297,6 +286,17 @@ void Simulation::do_statistics(){
     stats.avg_v += v;
     stats.avg_v2 += v.cwiseAbs2();
     stats.points++;
+}
+
+void Simulation::print_history() {
+    fileName = autoFileName();
+    outFile.open(fileName, std::fstream::out);
+    if(!outFile.good())
+        throw std::runtime_error("Could not open file " + fileName + " for output. Aborting");
+
+    for(int i = 0; i < printed; i++){
+        outFile << stats.table.col(i).transpose() << std::endl;
+    }
 }
 
 //  Step forward of dt by using the Velocity Verlet algorithm
@@ -354,7 +354,7 @@ void Simulation::step(){
 //    N++;
 //}
 
-const auto directionXYZ = Eigen::Vector3d::Ones().normalized();
+const auto directionXYZ = vec{ 1, 1, 1 }.normalized();
 
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
@@ -401,15 +401,12 @@ void Simulation::initializeMatrices(){
     int est_prints = est_time_steps / sim.print_every + 1;
     stats.allocated_size += est_prints;
 
-    stats.positions.conservativeResize(3, stats.allocated_size);
-    stats.velocities.conservativeResize(3, stats.allocated_size);
-    stats.times.conservativeResize(stats.allocated_size);
-    stats.decays.conservativeResize(stats.allocated_size);
+    stats.table.conservativeResize(8, stats.allocated_size);
 
 }
 
 void Simulation::run(){
-    if (speed() < 1e-5 && x.norm() < 1e-8){
+    if (v.norm() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }
 
