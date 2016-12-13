@@ -19,6 +19,7 @@
 #include <sstream>
 #include <ctime>
 #include <cmath>
+#include "Eigen/Dense"
 
 template <typename T, std::size_t N, typename U>
 std::array<T,N> operator/ (std::array<T,N> v, U scalar){
@@ -152,8 +153,10 @@ std::array<T,N> square (std::array<T,N> v){
 }
 
 
+
 constexpr auto zeros = staticvec{0.0,0.0,0.0};
-std::string autoFileName();
+std::string autoFileName(std::string prefix = "output");
+void print_table(std::string prefix, const Eigen::MatrixXd & table);
 
 #endif /* UTILITIES_H */
 

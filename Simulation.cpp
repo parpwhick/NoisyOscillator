@@ -100,7 +100,7 @@ double Simulation::trap_freq(int axis, double kick) {
         if (x_avg > outer_threshold)
             active = true;
 
-        if (zero_crossings >= 41)
+        if (zero_crossings >= 42)
             break;
 
         step();
@@ -354,7 +354,7 @@ void Simulation::step(){
 //    N++;
 //}
 
-const auto directionXYZ = vec{ 1, 1, 1 }.normalized();
+const auto directionXYZ = vec{1 / std::sqrt(3.0), 1 / std::sqrt(3.0), 1 / std::sqrt(3.0)};
 
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf

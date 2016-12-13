@@ -42,13 +42,15 @@ struct statistics {
     statistics(){
         points = 0;
         allocated_size = 0;
+        avg_v2.setZero();
+        avg_x = avg_x2 = avg_v = avg_v2;
     }
 
     void do_stats(vec &omegas, std::ostream& out);
 };
 
 class Simulation {    
-private:   
+private:
     
     std::random_device rd;
     std::mt19937 rng{rd()};
