@@ -274,6 +274,29 @@ void initial_temperature(){
 
 
 
+
+void initial_state(){
+    using namespace consts;
+    const int runs = 10000;
+    Simulation traj;
+
+    traj.sim.dt = consts::tau / 20;
+    double tottime = 0.002;
+    traj.sim.time_end = tottime;
+    traj.sim.time_engine_start = tottime / 3;
+    traj.sim.print_every = 500;
+    traj.potential = PotentialTypes::Tapered;
+    traj.calibrateTrapFrequencies(false);
+
+
+    for(int i = 0; i < runs; i++){
+        traj.stats = statistics();
+        traj.init_state(0.5);
+        std::cout << i << " " << traj.x.transpose() << " " <<
+                     traj.v.transpose() << std::endl;
+    }
+}
+
 int main(int , char** ) {
     using namespace consts;
 
@@ -282,8 +305,9 @@ int main(int , char** ) {
 //    scan_doppler_temperature();
 
 //     laser_cool();
-    averaged_runs();
+//    averaged_runs();
 //    initial_temperature();
+    initial_state();
     return 0;
 }
 
