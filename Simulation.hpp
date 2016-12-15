@@ -34,6 +34,7 @@ enum class PotentialTypes {
 struct statistics {
     int points;
     int allocated_size = 0;
+    int total_decays = 0;
     Eigen::MatrixXd table;
 
     // averages

@@ -272,7 +272,7 @@ void Simulation::read_state(std::ostream & out){
     out << "Time: " << t << ", mass: " << phys.M << endl;
     out << "Freqs:    " << omega.transpose()/(2*consts::pi) << endl;
     out << "Detuning: " << phys.detuning / consts::MHz << endl;
-    out << "Steps:    " << N << ", decays: " << decays << ", printouts: " << printed << endl;
+    out << "Steps:    " << N << ", decays: " << stats.total_decays << ", printouts: " << printed << endl;
     stats.do_stats(omega, out);
 }
 
@@ -283,6 +283,9 @@ void Simulation::do_statistics(){
         data << t , x , v , (double) decays;
         stats.table.col(printed) = data;
         printed++;
+        // reset the decay counter, per printed value
+        stats.total_decays += decays;
+        decays = 0;
     }
     if(t < sim.time_engine_start)
         return;

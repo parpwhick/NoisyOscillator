@@ -297,6 +297,49 @@ void initial_state(){
     }
 }
 
+
+
+void fluorescence(){
+    using namespace consts;
+    const int runs = 25;
+    std::vector<Simulation> traj(runs);
+
+    #pragma omp parallel for schedule(dynamic)
+    for(int i = 0; i < runs; i++){
+        traj[i].sim.dt = 5e-10;
+        double tottime = 0.010;
+        traj[i].sim.time_end = tottime;
+        traj[i].sim.time_engine_start = tottime / 3;
+        traj[i].sim.print_every = 500;
+        traj[i].phys.omega_rad0 = 2 * pi * 0.9 * MHz;
+        traj[i].phys.omega_ratio = 1.222;
+        traj[i].phys.omega_ax0 = 2 * pi * 0.200 * MHz;
+        traj[i].potential = PotentialTypes::Tapered;
+        traj[i].calibrateTrapFrequencies(false);
+
+        traj[i].init_state(0.002);
+
+        // run with lasers
+        traj[i].stats = statistics();
+        traj[i].phys.saturation = 1;
+        traj[i].phys.detuning = -20 * MHz;
+        traj[i].run();
+
+        printf("%3d -- done\n", i);
+    }
+
+    traj[0].print_history();
+
+    for(int i = 0; i < runs; i++){
+        std::cerr << "----- RUN " << i << " -------" << std::endl;
+        traj[i].read_state(std::cerr);
+        std::cerr << std::endl;
+    }
+
+    ensemble_statistics(traj);
+}
+
+
 int main(int , char** ) {
     using namespace consts;
 
@@ -307,7 +350,8 @@ int main(int , char** ) {
 //     laser_cool();
 //    averaged_runs();
 //    initial_temperature();
-    initial_state();
+//    initial_state();
+    fluorescence();
     return 0;
 }
 
