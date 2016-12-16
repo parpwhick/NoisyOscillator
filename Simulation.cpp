@@ -21,12 +21,12 @@
 
 #include "Utilities.h"
 
-Physical physical{};
-Parameters  simpar{physical};
+Physical physical;
+Parameters  simpar;
 
 Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes::Tapered) {
 //    std::cerr <<  "Default constructor called\n";
-//    std::cerr << "dt: " << sim.dt << " s, gamma: " << consts::gamma << " Hz\n";
+//    std::cerr << "dt: " << dt << " s, gamma: " << consts::gamma << " Hz\n";
     init_state(phys.T_init);
 
     decays = printed = N = 0;
@@ -43,6 +43,7 @@ double Simulation::trap_freq(int axis, double kick) {
     v.setZero();
     x.setZero();
     t = 0.0;
+    dt = sim.dt;
 
 
     //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
@@ -67,12 +68,12 @@ double Simulation::trap_freq(int axis, double kick) {
     double first_time = sim.time_end;
 
     // filter with exponential 1st order causal filter
-    int window_len = 10 * std::rint<int>(1 / (sim.dt * phys.RF_omega));
+    int window_len = 10 * std::rint<int>(1 / (dt * phys.RF_omega));
     if (window_len < 2){
         std::cerr << "window too short!!!!" << std::endl;
     }
     double alpha = 1 - 1/std::exp(1.0/window_len);
-    double t_delta = sim.dt * window_len / 2.0;
+    double t_delta = dt * window_len / 2.0;
     double x_avg = x[axis];
     
     while (t < sim.time_end){
@@ -309,8 +310,7 @@ void Simulation::print_history() {
 
 //  Step forward of dt by using the Velocity Verlet algorithm
 void Simulation::step(){
-    static double dt = sim.dt;
-    static double dthalf = 0.5 * dt;
+    double dthalf = 0.5 * dt;
 
     //update position
     x += (v + dthalf * a) * dt;
@@ -335,7 +335,7 @@ void Simulation::step(){
 
 // Step forward of dt by using Beeman algorithm
 //void Simulation::step(){
-//    static double dt = sim.dt;
+//    static double dt = dt;
 //
 //    //update position
 //    for (int i=0; i<3; i++){
@@ -362,58 +362,64 @@ void Simulation::step(){
 //    N++;
 //}
 
-const auto directionXYZ = vec{1 / std::sqrt(3.0), 1 / std::sqrt(3.0), 1 / std::sqrt(3.0)};
-
 void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // http://info.phys.unm.edu/~ideutsch/Classes/Phys500S09/Downloads/handpubl.pdf
     using namespace consts;
 
     // Wavevector of a photon at the Ca+ resonance
     static const double ksp = 2 * pi  / wavelength;
-    static const vec direction = directionXYZ;
+    static const double rate_per_dt = consts::gamma / 2 * dt;
 
     // Here, the actual frequency of the laser could be used,
     // but the error is of the order of (delta/actual laser freq) ~ 10^-9
     double klaser = ksp + 2 * pi * phys.detuning / C;
     // freq detuning = vparallel / C
     // delta eff = 2 * pi * (delta - vparallel/C)
-    double delta_eff = 2 * pi * phys.detuning - klaser * direction.dot(v);
+
     double s = phys.saturation;
+    double tot_prob = 0.0;
 
-    // V1
-    //    double saturation = phys.saturation * 1 / (square(term/consts::gamma) + 1);
-    //    double scatteringrate = consts::gamma * saturation / (1 + 2 * saturation);
+    for(unsigned int beam = 0; beam < phys.lasers.size(); beam++){
+        double delta_eff = 2 * pi * phys.detuning - klaser * phys.lasers[beam].dot(v);
+        double delta_norm = delta_eff / consts::gamma;
+        probs[beam] = rate_per_dt *  s / (1 + s + 4 * square(delta_norm) );
+        tot_prob += probs[beam];
+    }
 
-    // V2
-    double delta_norm = delta_eff / consts::gamma;
-    double scatteringrate = consts::gamma/2 * s / (1 + s + 4 * square(delta_norm) );
+//    if (dt * scatteringrate > 1)
+//        std::cout << "timestep too big for laserinteraction" << std::endl;
 
-    if (sim.dt * scatteringrate > 1)
-        std::cout << "timestep too big for laserinteraction" << std::endl;
-
-    if (rand() < sim.dt * scatteringrate) {//photonabsorbed
-        // step time after the scattering
-        // ...
-
+    if (rand() < tot_prob) {//photonabsorbed
         // count scattering events here
         decays++;
+
+        // determine laser beam
+        int beam = 0;
+        double threshold = rand() * tot_prob;
+        double psum = probs[beam];
+        while(threshold > psum){
+            beam++;
+            psum += probs[beam];
+        }
         
         auto rand_dir = vec{ randn(), randn(), randn() }.normalized();
-        v +=  hbar / MCa * ksp * (direction + rand_dir);
+        v +=  hbar / MCa * ksp * (phys.lasers[beam] + rand_dir);
     }
 }
 
 
 void Simulation::initializeMatrices(){
-    int est_time_steps = (int) std::ceil((sim.time_end - t)/sim.dt);
+    int est_time_steps = (int) std::ceil((sim.time_end - t)/dt);
     int est_prints = est_time_steps / sim.print_every + 1;
     stats.allocated_size += est_prints;
 
     stats.table.conservativeResize(8, stats.allocated_size);
 
+    probs.resize(phys.lasers.size());
 }
 
 void Simulation::run(){
+    dt = sim.dt;
     if (v.norm() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }

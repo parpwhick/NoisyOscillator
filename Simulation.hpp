@@ -130,11 +130,19 @@ public:
     vec a_t;
     // acceleration two steps behind
     vec a_tm;
+    // timestep
+    double dt;
     
+    // scattering probabilities per laser beam
+    std::vector<double> probs;
 };
 
 void ensemble_statistics(std::vector<Simulation> &traj);
 
+// declare global parameters
+extern Physical physical;
+// global simulation parameters
+extern Parameters  simpar;
 
 #endif /* SIMULATION_HPP */
 

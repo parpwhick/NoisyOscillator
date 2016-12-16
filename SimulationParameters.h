@@ -2,11 +2,15 @@
 #define SIMULATIONPARAMETERS_H
 
 #include "Constants.h"
+#include <vector>
 #include <cmath>
 #include <iostream>
+#include "Eigen/Dense"
 //using namespace consts;
 
 // Physical parameters
+
+typedef Eigen::Vector3d vec;
 
 struct Physical { 
     // Frequency of the RF electrodes
@@ -55,6 +59,8 @@ struct Physical {
     
     // Detuning ratio for the second radial frequency, 1+eps
     double omega_ratio;
+
+    std::vector<vec> lasers;
     
     void set_dependent_parameters(){        
         using namespace consts;
@@ -86,10 +92,13 @@ struct Physical {
         M = MCa;
 
         // saturation
-        saturation = 5.0;
+        saturation = 0.5;
+
+        // laser addressing all three directions
+        lasers = { vec(1.0, 1.0, 1.0).normalized() };
 
         // initial temperature
-        T_init = 0.080; // 80 mK
+        T_init = 0.005; // 5 mK
         
         set_dependent_parameters();
     }
@@ -112,12 +121,11 @@ public:
     double laser_initial_off;
     double laser_initial_on;
 
-    Parameters(Physical phys) {
+    Parameters() {
         using namespace consts;
 
-        // default 4 steps per micromotion oscillation
-        dt = 0.25 / (phys.RF_omega / 2 / pi);
-
+        // default 25 steps per micromotion oscillation
+        dt = 5e-10;
         set_dependent_parameters();
     }
 
