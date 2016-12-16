@@ -41,11 +41,11 @@ Simulation::~Simulation() {
 double Simulation::trap_freq(int axis, double kick) {
     using namespace consts;
 
+    phys = physical;
+    sim = simpar;
     v.setZero();
     x.setZero();
     t = 0.0;
-    dt = sim.dt;
-
 
     //double sigma_x = std::sqrt(k_B * 1.0 / phys.M / square(omega[axis]));
     // kick = randn() * sigma_x
@@ -69,12 +69,12 @@ double Simulation::trap_freq(int axis, double kick) {
     double first_time = sim.time_end;
 
     // filter with exponential 1st order causal filter
-    int window_len = 10 * std::rint<int>(1 / (dt * phys.RF_omega));
+    int window_len = 10 * std::rint<int>(1 / (sim.dt * phys.RF_omega));
     if (window_len < 2){
         std::cerr << "window too short!!!!" << std::endl;
     }
     double alpha = 1 - 1/std::exp(1.0/window_len);
-    double t_delta = dt * window_len / 2.0;
+    double t_delta = sim.dt * window_len / 2.0;
     double x_avg = x[axis];
     
     while (t < sim.time_end){
@@ -200,14 +200,14 @@ double Simulation::energy() {
 }
 
 vec Simulation::acceleration(double tt) {
-	switch(potential) {
-		case PotentialTypes::Tapered:
-			return acceleration_taper(tt);
-		case PotentialTypes::Harmonic:
-			return acceleration_harmonic(tt);
-		default:
-			return acceleration_microtaper(tt);
-	}
+    switch(potential) {
+        case PotentialTypes::Tapered:
+            return acceleration_taper(tt);
+        case PotentialTypes::Harmonic:
+            return acceleration_harmonic(tt);
+        default:
+            return acceleration_microtaper(tt);
+    }
 }
 
 // Pseudopotential with a taper
@@ -220,7 +220,7 @@ vec Simulation::acceleration_taper(double){
 
     auto z_derivative = -(square(omega[X] * x[X]) + square(omega[Y] * x[Y])) / ((x[Z]-phys.z0) + phys.zk);
     vec acc {   -square(omega[X]) * x[X],
-				-square(omega[Y]) * x[Y],
+                -square(omega[Y]) * x[Y],
                 -square(omega[Z]) * (x[Z]-phys.z0) - z_derivative };
 	return acc;
 }
@@ -316,6 +316,7 @@ void Simulation::print_history() {
 
 //  Step forward of dt by using the Velocity Verlet algorithm
 void Simulation::step(){
+    double dt = sim.dt;
     double dthalf = 0.5 * dt;
 
     //update position
@@ -324,6 +325,9 @@ void Simulation::step(){
     //update acceleration on the new position
     vec a_old = a; //it is already x(t+dt)
     a = acceleration(t+dt);
+
+    if (phys.noise_amp > 0)
+        a += vec(randn(), randn(), 0) * phys.noise_amp;
 
     //update speed
     v += dthalf * (a + a_old);
@@ -375,7 +379,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // Wavevector of a photon at the Ca+ resonance
     static const double ksp = 2 * pi  / wavelength;
     // total rate per laser, per dt
-    static const double rate_per_dt = consts::gamma / 2 * dt / phys.lasers.size();
+    static const double rate_per_dt = consts::gamma / 2 * sim.dt / phys.lasers.size();
 
     // Here, the actual frequency of the laser could be used,
     // but the error is of the order of (delta/actual laser freq) ~ 10^-9
@@ -419,7 +423,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
 
 
 void Simulation::initializeMatrices(){
-    int est_time_steps = (int) std::ceil((sim.time_end - t)/dt);
+    int est_time_steps = (int) std::ceil((sim.time_end - t)/sim.dt);
     int est_prints = est_time_steps / sim.print_every + 1;
     stats.allocated_size += est_prints;
 
@@ -429,17 +433,20 @@ void Simulation::initializeMatrices(){
 }
 
 void Simulation::run(double time){
-    dt = sim.dt;
+    phys = physical;
+    sim = simpar;
     if (v.norm() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }
     for(size_t i = 0; i < phys.lasers.size(); i++)
         phys.lasers[i].normalize();
 
+    if(time < 0)
+        throw std::runtime_error("Asked to run sim for a negative time");
+    sim.time_end = t + time;
+
     initializeMatrices();
 
-    if(sim.time_end - t < time)
-        sim.time_end = t + time;
     while (t < sim.time_end){
         do_statistics();
         step();
@@ -472,6 +479,6 @@ void ensemble_statistics(std::vector<Simulation> &traj){
     avg2 /= runs;
     traj[0].read_state();
 
-    print_table("avg", avg);
-    print_table("avg2", avg2);
+    print_table("avg", avg, traj[0].printed);
+    print_table("avg2", avg2, traj[0].printed);
 }

@@ -13,7 +13,7 @@ std::string autoFileName(std::string prefix){
 
 
 
-void print_table(std::string prefix, const Eigen::MatrixXd & table) {
+void print_table(std::string prefix, const Eigen::MatrixXd & table, int maxlines) {
     auto fileName = autoFileName(prefix);
     std::fstream outFile;
     outFile.open(fileName, std::fstream::out);
@@ -21,7 +21,7 @@ void print_table(std::string prefix, const Eigen::MatrixXd & table) {
         throw std::runtime_error("Could not open file " + fileName + " for output. Aborting");
 
 
-    for(int i = 0; i < table.cols(); i++){
+    for(int i = 0; i < std::min((int)table.cols(), maxlines); i++){
         outFile << table.col(i).transpose() << std::endl;
     }
 }

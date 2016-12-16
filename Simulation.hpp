@@ -65,8 +65,8 @@ public:
     Simulation();
     ~Simulation();
     
-    Physical &  phys;
-    Parameters & sim;
+    Physical  phys;
+    Parameters sim;
     
     // Init state with temperature T on all axes
     double init_state(double T);
@@ -85,9 +85,9 @@ public:
     void initializeMatrices();
 
     // define the type of potential, switching below the accelerations below:
-    PotentialTypes potential;    
+    PotentialTypes potential;
     // Calculate forces and energies
-    vec acceleration(double time);
+    vec acceleration(double);
     vec acceleration_taper(double time);
     vec acceleration_microtaper(double time);
     vec acceleration_harmonic(double time);
@@ -131,8 +131,6 @@ public:
     vec a_t;
     // acceleration two steps behind
     vec a_tm;
-    // timestep
-    double dt;
     
     // scattering probabilities per laser beam
     std::vector<double> probs;

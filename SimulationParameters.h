@@ -60,7 +60,11 @@ struct Physical {
     // Detuning ratio for the second radial frequency, 1+eps
     double omega_ratio;
 
+    // Vector of laser directions, automatically normalized
     std::vector<vec> lasers;
+
+    // Noise intensity on the electrodes
+    double noise_amp;
     
     void set_dependent_parameters(){        
         using namespace consts;
@@ -94,8 +98,11 @@ struct Physical {
         // saturation
         saturation = 0.5;
 
+        // noise = 0
+        noise_amp = 0.0;
+
         // laser addressing all three directions
-        lasers = { vec(1.0, 1.0, 1.0).normalized() };
+        lasers = { vec(1.0, 1.0, 1.0) };
 
         // initial temperature
         T_init = 0.005; // 5 mK
