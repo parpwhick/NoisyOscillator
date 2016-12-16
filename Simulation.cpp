@@ -30,6 +30,7 @@ Simulation::Simulation() : phys(physical), sim(simpar), potential(PotentialTypes
     init_state(phys.T_init);
 
     decays = printed = N = 0;
+    t = 0;
 
     omega << phys.omega_rad0, phys.omega_rad0, phys.omega_ax0;
 }
@@ -143,7 +144,7 @@ inline double Simulation::rand() {
 double Simulation::init_state(double T) {
     using namespace std;
     using namespace consts;
-    t = sim.time_start;
+    t = 0;
     x.setZero();
     v.setZero();
     a = acceleration(t);
@@ -173,7 +174,7 @@ double Simulation::init_state(double T) {
 double Simulation::init_kick(double kick) {
     using namespace std;
     using namespace consts;
-    t = sim.time_start;
+    t = 0;
     x.setConstant(kick);
     v.setZero();
     a = v;
@@ -272,6 +273,11 @@ void Simulation::read_state(std::ostream & out){
     energy();
     out << "Time: " << t << ", mass: " << phys.M << endl;
     out << "Freqs:    " << omega.transpose()/(2*consts::pi) << endl;
+    out << "Lasers:   ";
+    for(auto &l : phys.lasers){
+        out << "[" << l.transpose() << "], ";
+    }
+    out << std::endl;
     out << "Detuning: " << phys.detuning / consts::MHz << endl;
     out << "Steps:    " << N << ", decays: " << stats.total_decays << ", printouts: " << printed << endl;
     stats.do_stats(omega, out);
@@ -368,7 +374,8 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
 
     // Wavevector of a photon at the Ca+ resonance
     static const double ksp = 2 * pi  / wavelength;
-    static const double rate_per_dt = consts::gamma / 2 * dt;
+    // total rate per laser, per dt
+    static const double rate_per_dt = consts::gamma / 2 * dt / phys.lasers.size();
 
     // Here, the actual frequency of the laser could be used,
     // but the error is of the order of (delta/actual laser freq) ~ 10^-9
@@ -376,12 +383,13 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // freq detuning = vparallel / C
     // delta eff = 2 * pi * (delta - vparallel/C)
 
-    double s = phys.saturation;
+    double s = phys.lasers.size() * phys.saturation;
     double tot_prob = 0.0;
 
     for(unsigned int beam = 0; beam < phys.lasers.size(); beam++){
         double delta_eff = 2 * pi * phys.detuning - klaser * phys.lasers[beam].dot(v);
         double delta_norm = delta_eff / consts::gamma;
+        // the probability per beam is ~1/N_beams * total_scattering_probability
         probs[beam] = rate_per_dt *  s / (1 + s + 4 * square(delta_norm) );
         tot_prob += probs[beam];
     }
@@ -389,6 +397,8 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
 //    if (dt * scatteringrate > 1)
 //        std::cout << "timestep too big for laserinteraction" << std::endl;
 
+    // tot_prob is the probability with the correct saturation for multiple laser beams
+    // which is then split between the lasers according to their relative absorbtion likelyhood
     if (rand() < tot_prob) {//photonabsorbed
         // count scattering events here
         decays++;
@@ -401,7 +411,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
             beam++;
             psum += probs[beam];
         }
-        
+
         auto rand_dir = vec{ randn(), randn(), randn() }.normalized();
         v +=  hbar / MCa * ksp * (phys.lasers[beam] + rand_dir);
     }
@@ -418,18 +428,26 @@ void Simulation::initializeMatrices(){
     probs.resize(phys.lasers.size());
 }
 
-void Simulation::run(){
+void Simulation::run(double time){
     dt = sim.dt;
     if (v.norm() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }
+    for(size_t i = 0; i < phys.lasers.size(); i++)
+        phys.lasers[i].normalize();
 
     initializeMatrices();
 
+    if(sim.time_end - t < time)
+        sim.time_end = t + time;
     while (t < sim.time_end){
         do_statistics();
         step();
     }
+}
+
+void Simulation::run(){
+    run(sim.time_end);
 }
 
 

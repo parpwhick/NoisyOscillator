@@ -301,41 +301,39 @@ void initial_state(){
 
 void fluorescence(){
     using namespace consts;
-    const int runs = 25;
+    const int runs = 16;
+
+    double tottime = 0.010;
+    simpar.dt = 5e-10;
+    simpar.time_end = tottime;
+    simpar.time_engine_start = tottime / 3;
+    simpar.print_every = 500;
+    physical.omega_rad0 = 2 * pi * 0.9 * MHz;
+    physical.omega_ratio = 1.222;
+    physical.omega_ax0 = 2 * pi * 0.200 * MHz;
+    physical.saturation = 0.3;
+    physical.detuning = -20 * MHz;
+
+    physical.lasers = { vec{1,1,0}, vec{0,0,1} };
     std::vector<Simulation> traj(runs);
 
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].sim.dt = 5e-10;
-        double tottime = 0.010;
-        traj[i].sim.time_end = tottime;
-        traj[i].sim.time_engine_start = tottime / 3;
-        traj[i].sim.print_every = 500;
-        traj[i].phys.omega_rad0 = 2 * pi * 0.9 * MHz;
-        traj[i].phys.omega_ratio = 1.222;
-        traj[i].phys.omega_ax0 = 2 * pi * 0.200 * MHz;
         traj[i].potential = PotentialTypes::Tapered;
         traj[i].calibrateTrapFrequencies(false);
-
-        traj[i].init_state(0.002);
+        traj[i].init_state(0.010);
 
         // run with lasers
         traj[i].stats = statistics();
-        traj[i].phys.saturation = 1;
-        traj[i].phys.detuning = -20 * MHz;
         traj[i].run();
 
         printf("%3d -- done\n", i);
-    }
-
-    traj[0].print_history();
-
-    for(int i = 0; i < runs; i++){
         std::cerr << "----- RUN " << i << " -------" << std::endl;
         traj[i].read_state(std::cerr);
         std::cerr << std::endl;
     }
 
+    traj[0].print_history();
     ensemble_statistics(traj);
 }
 

@@ -105,6 +105,7 @@ public:
     void print_history();
     // Run simulation from t = 0 to phys.end_time
     void run();
+    void run(double time);
 
     // Statistics of the simulation
     struct statistics stats;

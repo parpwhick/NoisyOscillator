@@ -112,7 +112,6 @@ public:
 
     // Time step for the simulation
     double dt;
-    double time_start;
     double time_end;
     int steps;
     int print_every = 500;
