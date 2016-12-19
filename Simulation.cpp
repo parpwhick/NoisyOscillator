@@ -272,9 +272,9 @@ void Simulation::read_state(std::ostream & out){
     out << "Time: " << t << ", mass: " << phys.M << endl;
     out << "Freqs:    " << omega.transpose()/(2*consts::pi) << endl;
     out << "Lasers:   ";
-    for(auto &l : phys.lasers){
-        out << "[" << l.transpose() << "], ";
-    }
+//    for(auto &l : phys.lasers){
+        out << laser_intensity << " [" << laser_direction.transpose() << "], ";
+//    }
     out << std::endl;
     out << "Detuning: " << phys.detuning / consts::MHz << endl;
     out << "Steps:    " << N << ", decays: " << stats.total_decays << ", printouts: " << printed << endl;
@@ -377,7 +377,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // Wavevector of a photon at the Ca+ resonance
     static const double ksp = 2 * pi  / wavelength;
     // total rate per laser, per dt
-    static const double rate_per_dt = consts::gamma / 2 * sim.dt / phys.lasers.size();
+    static const double rate_per_dt = consts::gamma / 2 * sim.dt;
 
     // Here, the actual frequency of the laser could be used,
     // but the error is of the order of (delta/actual laser freq) ~ 10^-9
@@ -385,37 +385,19 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // freq detuning = vparallel / C
     // delta eff = 2 * pi * (delta - vparallel/C)
 
-    double s = phys.lasers.size() * phys.saturation[0];
+    double s = laser_intensity;
     double tot_prob = 0.0;
 
-    for(unsigned int beam = 0; beam < phys.lasers.size(); beam++){
-        double delta_eff = 2 * pi * phys.detuning - klaser * phys.lasers[beam].dot(v);
-        double delta_norm = delta_eff / consts::gamma;
-        // the probability per beam is ~1/N_beams * total_scattering_probability
-        probs[beam] = rate_per_dt *  s / (1 + s + 4 * square(delta_norm) );
-        tot_prob += probs[beam];
-    }
+    double delta_eff = 2 * pi * phys.detuning - klaser * laser_direction.dot(v);
+    double delta_norm = delta_eff / consts::gamma;
+    tot_prob = rate_per_dt *  s / (1 + s + 4 * square(delta_norm) );
 
-//    if (dt * scatteringrate > 1)
-//        std::cout << "timestep too big for laserinteraction" << std::endl;
-
-    // tot_prob is the probability with the correct saturation for multiple laser beams
-    // which is then split between the lasers according to their relative absorbtion likelyhood
     if (rand() < tot_prob) {//photonabsorbed
         // count scattering events here
         decays++;
 
-        // determine laser beam
-        int beam = 0;
-        double threshold = rand() * tot_prob;
-        double psum = probs[beam];
-        while(threshold > psum){
-            beam++;
-            psum += probs[beam];
-        }
-
         auto rand_dir = vec{ randn(), randn(), randn() }.normalized();
-        v +=  hbar / MCa * ksp * (phys.lasers[beam] + rand_dir);
+        v +=  hbar / MCa * ksp * (laser_direction + rand_dir);
     }
 }
 
@@ -435,17 +417,20 @@ void Simulation::setupLaserBeam(){
     probs.resize(phys.lasers.size());
 
     laser_direction.setZero();
+    // The lasers vectors are summed, to obtain one average beam with the correct intensity.
+    // This means, we have to take the square root of the intensity to get the field,
+    //     and add that one vectorially. At the end, the squared norm gives the final intensity.
     if (phys.saturation.size() == 1) {
         // loop using bound checking
         for(size_t i = 0; i < phys.lasers.size(); i++)
-            laser_direction += phys.saturation.at(0) * phys.lasers.at(i);
+            laser_direction += std::sqrt(phys.saturation.at(0)) * phys.lasers.at(i);
     }
     else {
         // loop using bound checking
         for(size_t i = 0; i < phys.lasers.size(); i++)
-            laser_direction += phys.saturation.at(0) * phys.lasers.at(i);
+            laser_direction += std::sqrt(phys.saturation.at(i)) * phys.lasers.at(i);
     }
-    laser_intensity = laser_direction.norm();
+    laser_intensity = laser_direction.squaredNorm();
     laser_direction.normalize();
 
 }
@@ -492,9 +477,11 @@ void ensemble_statistics(std::vector<Simulation> &traj){
         traj[0].stats.avg_x += traj[i].stats.avg_x;
         traj[0].stats.avg_x2 += traj[i].stats.avg_x2;
         traj[0].stats.points += traj[i].stats.points;
+        traj[0].stats.total_decays += traj[i].stats.total_decays;
     }
     avg /= runs;
     avg2 /= runs;
+    traj[0].stats.total_decays /= runs;
     traj[0].read_state();
 
     print_table("avg", avg, traj[0].printed);
