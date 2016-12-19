@@ -138,6 +138,9 @@ public:
     double laser_intensity;
     // set up all laser parameters before the simulation
     void setupLaserBeam();
+
+    // Noise giving function
+    std::function<double(double)> noiseFun = [](double ) -> double{return 1.0;};
 };
 
 void ensemble_statistics(std::vector<Simulation> &traj);

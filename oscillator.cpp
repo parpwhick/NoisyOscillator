@@ -339,7 +339,7 @@ void fluorescence(){
 
 void test_noise(){
     using namespace consts;
-    const int runs = 100;
+    const int runs = 20;
 
     double tottime = 0.0004;
     simpar.dt = 5e-10;
@@ -351,7 +351,6 @@ void test_noise(){
     physical.saturation = {1};
     physical.detuning = -20 * MHz;
     physical.noise_amp = 0;
-
     physical.lasers = { vec(1,1,1) };
     std::vector<Simulation> traj(runs);
 
@@ -363,12 +362,58 @@ void test_noise(){
         traj[i].stats = statistics();
 
         for(int tt = 0; tt < 10; tt++){
-        physical.noise_amp =  0;
+            traj[i].phys.noise_amp =  0;
+            traj[i].run(tottime);
+
+            traj[i].phys.noise_amp =  0.010 /simpar.dt;
+            traj[i].run(tottime);
+        }
+
+
+        printf("%3d -- done\n", i);
+        std::cerr << "----- RUN " << i << " -------" << std::endl;
+        traj[i].read_state(std::cerr);
+        std::cerr << std::endl;
+    }
+
+    traj[0].print_history();
+    ensemble_statistics(traj);
+}
+
+void heat_engine(){
+    using namespace consts;
+    const int runs = 150;
+
+    double tottime = 0.05;
+    simpar.dt = 5e-10;
+    simpar.time_engine_start = tottime / 3;
+    simpar.print_every = 500;
+    physical.omega_rad0 = 2 * pi * 0.9 * MHz;
+    physical.omega_ratio = 1.222;
+    physical.omega_ax0 = 2 * pi * 0.200 * MHz;
+    physical.saturation = {0.5};
+    physical.detuning = -20 * MHz;
+    physical.noise_amp = 0.010 / simpar.dt;
+    double dutyCycle = 0.3;
+    double threshhold = std::sin(pi*(0.5-dutyCycle));
+    physical.lasers = { vec(1,1,1) };
+    std::vector<Simulation> traj(runs);
+
+    #pragma omp parallel for schedule(dynamic)
+    for(int i = 0; i < runs; i++){
+        traj[i].potential = PotentialTypes::Tapered;
+        traj[i].calibrateTrapFrequencies(false);
+        traj[i].init_state(0.010);
+        traj[i].stats = statistics();
+        double freq = physical.omega_ax0;
+        traj[i].noiseFun = [threshhold, freq, tottime](double t)->double{
+            if(t < tottime / 3)
+                return 0;
+            else
+                return (sin(t * freq) > threshhold);
+        };
         traj[i].run(tottime);
 
-        physical.noise_amp =  0.010 /simpar.dt;
-        traj[i].run(tottime);
-        }
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
@@ -391,8 +436,9 @@ int main(int , char** ) {
 //    averaged_runs();
 //    initial_temperature();
 //    initial_state();
-    fluorescence();
+//    fluorescence();
 //    test_noise();
+    heat_engine();
     return 0;
 }
 

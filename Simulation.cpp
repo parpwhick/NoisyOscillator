@@ -324,8 +324,7 @@ void Simulation::step(){
     vec a_old = a; //it is already x(t+dt)
     a = acceleration(t+dt);
 
-    if (phys.noise_amp > 0)
-        a += vec(randn(), randn(), 0) * phys.noise_amp;
+    a += vec(randn(), randn(), 0) * phys.noise_amp * noiseFun(t);
 
     //update speed
     v += dthalf * (a + a_old);
