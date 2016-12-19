@@ -41,8 +41,6 @@ Simulation::~Simulation() {
 double Simulation::trap_freq(int axis, double kick) {
     using namespace consts;
 
-    phys = physical;
-    sim = simpar;
     v.setZero();
     x.setZero();
     t = 0.0;
@@ -57,7 +55,7 @@ double Simulation::trap_freq(int axis, double kick) {
         return omega[axis] / 2 / pi;
 
     auto old_saturation = phys.saturation;
-    phys.saturation = 0;
+    phys.saturation = {0};
     
     int zero_crossings = 0;
     bool inside_threshold = false;
@@ -333,7 +331,7 @@ void Simulation::step(){
     v += dthalf * (a + a_old);
 
     //apply stochastic forces
-    if (phys.saturation > 0)
+    if (phys.saturation[0] > 0)
         laserXYZ();
 
     //update time
@@ -387,7 +385,7 @@ void Simulation::laserXYZ() {//Formeln aus Apl. Phys. B 45, 175
     // freq detuning = vparallel / C
     // delta eff = 2 * pi * (delta - vparallel/C)
 
-    double s = phys.lasers.size() * phys.saturation;
+    double s = phys.lasers.size() * phys.saturation[0];
     double tot_prob = 0.0;
 
     for(unsigned int beam = 0; beam < phys.lasers.size(); beam++){
@@ -428,18 +426,36 @@ void Simulation::initializeMatrices(){
     stats.allocated_size += est_prints;
 
     stats.table.conservativeResize(8, stats.allocated_size);
+}
+
+void Simulation::setupLaserBeam(){
+    for(size_t i = 0; i < phys.lasers.size(); i++)
+        phys.lasers[i].normalize();
 
     probs.resize(phys.lasers.size());
+
+    laser_direction.setZero();
+    if (phys.saturation.size() == 1) {
+        // loop using bound checking
+        for(size_t i = 0; i < phys.lasers.size(); i++)
+            laser_direction += phys.saturation.at(0) * phys.lasers.at(i);
+    }
+    else {
+        // loop using bound checking
+        for(size_t i = 0; i < phys.lasers.size(); i++)
+            laser_direction += phys.saturation.at(0) * phys.lasers.at(i);
+    }
+    laser_intensity = laser_direction.norm();
+    laser_direction.normalize();
+
 }
 
 void Simulation::run(double time){
-    phys = physical;
-    sim = simpar;
     if (v.norm() < 1e-5 && x.norm() < 1e-8){
         init_state(phys.T_init);
     }
-    for(size_t i = 0; i < phys.lasers.size(); i++)
-        phys.lasers[i].normalize();
+
+    setupLaserBeam();
 
     if(time < 0)
         throw std::runtime_error("Asked to run sim for a negative time");
@@ -454,6 +470,8 @@ void Simulation::run(double time){
 }
 
 void Simulation::run(){
+//    std::cout << "Going to run for " << sim.time_end << " seconds, starting the statistics at "
+//                 << sim.time_engine_start << ", printing every " << sim.print_every << std::endl;
     run(sim.time_end);
 }
 

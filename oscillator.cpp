@@ -136,7 +136,7 @@ void laser_cool(){
 
     // run with lasers
     single_ion.stats = statistics();
-    single_ion.phys.saturation = 1;
+    single_ion.phys.saturation = {1};
     single_ion.phys.detuning = -10 * MHz;
     single_ion.run();
     single_ion.read_state(std::cerr);
@@ -149,7 +149,7 @@ void test_taper(){
     
     Simulation sim;
     sim.sim.dt = consts::tau / 100;
-    sim.phys.saturation = 0;
+    sim.phys.saturation = {0};
     sim.sim.time_end = 0.0001;
     sim.sim.print_every = 100;
     sim.potential = PotentialTypes::Realistic;
@@ -188,7 +188,7 @@ void scan_doppler_temperature(){
 
         // run with lasers
         single_ion.stats = statistics();
-        single_ion.phys.saturation = 0.2;
+        single_ion.phys.saturation = {0.2};
         single_ion.phys.detuning = detuning * MHz;
         single_ion.run();
         single_ion.read_state(std::cerr);
@@ -198,13 +198,13 @@ void scan_doppler_temperature(){
 
 void averaged_runs(){
     using namespace consts;
-    const int runs = 25;
+    const int runs = 4;
     std::vector<Simulation> traj(runs);
 
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
         traj[i].sim.dt = consts::tau / 20;
-        double tottime = 0.008;
+        double tottime = 0.008;        
         traj[i].sim.time_end = tottime;
         traj[i].sim.time_engine_start = tottime / 3;
         traj[i].sim.print_every = 500;
@@ -212,10 +212,9 @@ void averaged_runs(){
         traj[i].calibrateTrapFrequencies(false);
 
         traj[i].init_state(0.5);
-
         // run with lasers
         traj[i].stats = statistics();
-        traj[i].phys.saturation = 1;
+        traj[i].phys.saturation = {1};
         traj[i].phys.detuning = -10 * MHz;
         traj[i].run();
 
@@ -311,7 +310,7 @@ void fluorescence(){
     physical.omega_rad0 = 2 * pi * 0.9 * MHz;
     physical.omega_ratio = 1.222;
     physical.omega_ax0 = 2 * pi * 0.200 * MHz;
-    physical.saturation = 0.3;
+    physical.saturation = {0.3, 0.3};
     physical.detuning = -20 * MHz;
 
     physical.lasers = { vec(1,1,0), vec(0,0,1) };
@@ -349,7 +348,7 @@ void test_noise(){
     physical.omega_rad0 = 2 * pi * 0.9 * MHz;
     physical.omega_ratio = 1.222;
     physical.omega_ax0 = 2 * pi * 0.200 * MHz;
-    physical.saturation = 1;
+    physical.saturation = {1};
     physical.detuning = -20 * MHz;
     physical.noise_amp = 0;
 
@@ -392,8 +391,8 @@ int main(int , char** ) {
 //    averaged_runs();
 //    initial_temperature();
 //    initial_state();
-//    fluorescence();
-    test_noise();
+    fluorescence();
+//    test_noise();
     return 0;
 }
 

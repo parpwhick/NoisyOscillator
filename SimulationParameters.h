@@ -23,7 +23,7 @@ struct Physical {
     // Laser detuning
     double detuning;
     // Laser intensity normalized [0 .. 10]
-    double saturation;
+    std::vector<double> saturation;
 
     // Initial temperature
     double T_init;
@@ -96,7 +96,7 @@ struct Physical {
         M = MCa;
 
         // saturation
-        saturation = 0.5;
+        saturation = { 0.5 };
 
         // noise = 0
         noise_amp = 0.0;
