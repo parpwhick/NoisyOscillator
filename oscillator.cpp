@@ -384,7 +384,7 @@ void heat_engine(){
     using namespace consts;
     const int runs = 150;
 
-    double tottime = 0.05;
+    double tottime = 0.010;
     simpar.dt = 5e-10;
     simpar.time_engine_start = tottime / 3;
     simpar.print_every = 500;
@@ -393,8 +393,8 @@ void heat_engine(){
     physical.omega_ax0 = 2 * pi * 0.200 * MHz;
     physical.saturation = {0.5};
     physical.detuning = -20 * MHz;
-    physical.noise_amp = 0.010 / simpar.dt;
-    double dutyCycle = 0.3;
+    physical.noise_amp = 0.050 / simpar.dt;
+    double dutyCycle = 0.5;
     double threshhold = std::sin(pi*(0.5-dutyCycle));
     physical.lasers = { vec(1,1,1) };
     std::vector<Simulation> traj(runs);
