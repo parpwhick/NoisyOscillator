@@ -134,8 +134,6 @@ public:
     
     // scattering probabilities per laser beam
     std::vector<double> probs;
-    vec laser_direction;
-    double laser_intensity;
     // set up all laser parameters before the simulation
     void setupLaserBeam();
 
