@@ -252,7 +252,7 @@ vec Simulation::acceleration_microtaper(double tt){
 
 
 void statistics::do_stats(vec& omegas, std::ostream & out) {
-using namespace std;
+	using namespace std;
     double millit = 1000 * consts::m_over_kb;
     out << "Avg pos:  " << avg_x / points << endl;
     out << "Avg vel:  " << avg_v / points << endl;
@@ -307,7 +307,7 @@ void Simulation::print_history() {
     if(!outFile.good())
         throw std::runtime_error("Could not open file " + fileName + " for output. Aborting");
 
-    for(int i = 0; i < printed; i++){
+    for(size_t i = 0; i < printed; i++){
         outFile << stats.table.col(i).transpose() << std::endl;
     }
 }
@@ -461,28 +461,33 @@ void Simulation::run(){
 
 
 
-void ensemble_statistics(std::vector<Simulation> &traj){
-    if (traj.empty())
-        return;
-    Eigen::MatrixXd avg = traj[0].stats.table;
-    Eigen::MatrixXd avg2 = traj[0].stats.table.cwiseAbs2();
-    int runs = traj.size();
-    for(int i = 1; i < runs; i++){
-        avg  += traj[i].stats.table;
-        avg2 += traj[i].stats.table.cwiseAbs2();
+void Simulation::collect_statistics(const Simulation & traj) {
+	if (stats.runs == 0) {
+	    stats.table = traj.stats.table;
+    	stats.table2 = traj.stats.table.cwiseAbs2();
+	} else {
+		stats.table  += traj.stats.table;
+		stats.table2 += traj.stats.table.cwiseAbs2();
+	}
+	stats.runs++;
+    stats.avg_v += traj.stats.avg_v;
+    stats.avg_v2 += traj.stats.avg_v2;
+    stats.avg_x += traj.stats.avg_x;
+    stats.avg_x2 += traj.stats.avg_x2;
+    stats.points += traj.stats.points;
+    stats.total_decays += traj.stats.total_decays;
 
-        traj[0].stats.avg_v += traj[i].stats.avg_v;
-        traj[0].stats.avg_v2 += traj[i].stats.avg_v2;
-        traj[0].stats.avg_x += traj[i].stats.avg_x;
-        traj[0].stats.avg_x2 += traj[i].stats.avg_x2;
-        traj[0].stats.points += traj[i].stats.points;
-        traj[0].stats.total_decays += traj[i].stats.total_decays;
-    }
-    avg /= runs;
-    avg2 /= runs;
-    traj[0].stats.total_decays /= runs;
-    traj[0].read_state();
-
-    print_table("avg", avg, traj[0].printed);
-    print_table("avg2", avg2, traj[0].printed);
+	printed = traj.printed;
 }
+
+void Simulation::ensemble_statistics() {
+	std::cout << "# Statistics over " << stats.runs << " runs" << std::endl;
+    stats.table /= stats.runs;
+    stats.table2 /= stats.runs;
+    stats.total_decays /= stats.runs;
+    read_state();
+
+    print_table("table", stats.table, printed);
+    print_table("avg2", stats.table2, printed);
+}
+

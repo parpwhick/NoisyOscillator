@@ -17,10 +17,10 @@
 #include "Utilities.h"
 using namespace std;
 
-void run_average(Simulation &sim, int N, double T) {
+void run_average(Simulation &sim, size_t N, double T) {
     double avg_en = 0.0;
 
-    for (int i = 0; i < N; i++) {
+    for (size_t i = 0; i < N; i++) {
         avg_en += sim.init_state(T);
     }
     avg_en /= N;
@@ -199,37 +199,27 @@ void scan_doppler_temperature(){
 void averaged_runs(){
     using namespace consts;
     const int runs = 4;
-    std::vector<Simulation> traj(runs);
 
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].sim.dt = consts::tau / 20;
+        Simulation traj;
+        traj.sim.dt = consts::tau / 20;
         double tottime = 0.008;        
-        traj[i].sim.time_end = tottime;
-        traj[i].sim.time_engine_start = tottime / 3;
-        traj[i].sim.print_every = 500;
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
+        traj.sim.time_end = tottime;
+        traj.sim.time_engine_start = tottime / 3;
+        traj.sim.print_every = 500;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
 
-        traj[i].init_state(0.5);
+        traj.init_state(0.5);
         // run with lasers
-        traj[i].stats = statistics();
-        traj[i].phys.saturation = {1};
-        traj[i].phys.detuning = -10 * MHz;
-        traj[i].run();
+        traj.stats = statistics();
+        traj.phys.saturation = {1};
+        traj.phys.detuning = -10 * MHz;
+        traj.run();
 
         printf("%3d -- done\n", i);
     }
-
-    traj[0].print_history();
-
-    for(int i = 0; i < runs; i++){
-        std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
-        std::cerr << std::endl;
-    }
-
-    ensemble_statistics(traj);
 }
 
 
@@ -262,7 +252,7 @@ void initial_temperature(){
         v2 += traj.v.cwiseAbs2();
         x2 += (traj.x.array() * traj.omega.array()).square().matrix() * 4.8;
         //        std::cerr << "----- RUN " << i << " -------" << std::endl;
-        //        std::cerr << "T: " << traj[i].energy()*4.8 << std::endl;
+        //        std::cerr << "T: " << traj.energy()*4.8 << std::endl;
         //        std::cerr << std::endl;
     }
 
@@ -314,26 +304,31 @@ void fluorescence(){
     physical.detuning = -20 * MHz;
 
     physical.lasers = { vec(1,1,0), vec(0,0,1) };
-    std::vector<Simulation> traj(runs);
-
+    
+    Simulation results;
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
-        traj[i].init_state(0.010);
+        Simulation traj;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
+        traj.init_state(0.010);
 
         // run with lasers
-        traj[i].stats = statistics();
-        traj[i].run();
+        traj.stats = statistics();
+        traj.run();
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
+        traj.read_state(std::cerr);
         std::cerr << std::endl;
-    }
-
-    traj[0].print_history();
-    ensemble_statistics(traj);
+        if (i == 0)
+            traj.print_history();
+        #pragma omp critical 
+        {
+            results.collect_statistics(traj);
+        }
+    }    
+    results.ensemble_statistics();
 }
 
 
@@ -352,34 +347,38 @@ void test_noise(){
     physical.detuning = -20 * MHz;
     physical.noise_amp = 0;
     physical.lasers = { vec(1,1,1) };
-    std::vector<Simulation> traj(runs);
 
     double amp = 0.040 /simpar.dt;
 
+    Simulation results;
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
-        traj[i].init_state(0.010);
-        traj[i].stats = statistics();
+        Simulation traj;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
+        traj.init_state(0.010);
+        traj.stats = statistics();
 
         for(int tt = 0; tt < 60; tt++){
-            traj[i].phys.noise_amp =  0;
-            traj[i].run(tottime);
+            traj.phys.noise_amp =  0;
+            traj.run(tottime);
 
-            traj[i].phys.noise_amp =  amp;
-            traj[i].run(tottime);
+            traj.phys.noise_amp =  amp;
+            traj.run(tottime);
         }
-
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
+        traj.read_state(std::cerr);
         std::cerr << std::endl;
-    }
-
-    traj[0].print_history();
-    ensemble_statistics(traj);
+        if (i == 0)
+            traj.print_history();
+        #pragma omp critical 
+        {
+            results.collect_statistics(traj);
+        }
+    }    
+    results.ensemble_statistics();
 }
 
 void noise_ramp(){
@@ -397,29 +396,35 @@ void noise_ramp(){
     physical.detuning = -20 * MHz;
     physical.noise_amp = 0;
     physical.lasers = { vec(1,1,1) };
-    std::vector<Simulation> traj(runs);
 
+
+    Simulation results;
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
-        traj[i].init_state(0.0001);
-        traj[i].stats = statistics();
+        Simulation traj;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
+        traj.init_state(0.0001);
+        traj.stats = statistics();
 
         for(int tt = 0; tt < 30; tt++){
-            traj[i].phys.noise_amp =  0;
-            traj[i].run(tottime);
+            traj.phys.noise_amp =  0;
+            traj.run(tottime);
         }
 
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
+        traj.read_state(std::cerr);
         std::cerr << std::endl;
-    }
-
-    traj[0].print_history();
-    ensemble_statistics(traj);
+        if (i == 0)
+            traj.print_history();
+        #pragma omp critical 
+        {
+            results.collect_statistics(traj);
+        }
+    }    
+    results.ensemble_statistics();
 }
 
 
@@ -438,32 +443,37 @@ void laser_heating(){
     physical.detuning = -3 * MHz;
     physical.noise_amp = 0;
     physical.lasers = { vec(1,1,0), vec(-1,-1,0), vec(0,0,1), vec(0,0,-1) };
-    std::vector<Simulation> traj(runs);
 
+    Simulation results;
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
-        traj[i].init_state(0.010);
-        traj[i].stats = statistics();
+        Simulation traj;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
+        traj.init_state(0.010);
+        traj.stats = statistics();
 
         for(int tt = 0; tt < 20; tt++){
-            traj[i].phys.saturation = {1.0, 1.0, 1.0, 1.0};
-            traj[i].run(tottime);
+            traj.phys.saturation = {1.0, 1.0, 1.0, 1.0};
+            traj.run(tottime);
 
-            traj[i].phys.saturation = {40.0, 40.0, 1.0, 1.0};
-            traj[i].run(tottime);
+            traj.phys.saturation = {40.0, 40.0, 1.0, 1.0};
+            traj.run(tottime);
         }
 
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
+        traj.read_state(std::cerr);
         std::cerr << std::endl;
+        if (i == 0)
+            traj.print_history();
+        #pragma omp critical 
+        {
+            results.collect_statistics(traj);
+        }
     }
-
-    traj[0].print_history();
-    ensemble_statistics(traj);
+    results.ensemble_statistics();
 }
 
 void heat_engine(){
@@ -482,33 +492,38 @@ void heat_engine(){
     double dutyCycle = 0.1;
     double threshhold = std::sin(pi*(0.5-dutyCycle));
     physical.lasers = { vec(1,1,0), vec(-1,-1,0), vec(0,0,1), vec(0,0,-1) };
-    std::vector<Simulation> traj(runs);
 
+    Simulation results;
     #pragma omp parallel for schedule(dynamic)
     for(int i = 0; i < runs; i++){
-        traj[i].potential = PotentialTypes::Tapered;
-        traj[i].calibrateTrapFrequencies(false);
-        traj[i].init_state(0.010);
-        traj[i].stats = statistics();
+        Simulation traj;
+        traj.potential = PotentialTypes::Tapered;
+        traj.calibrateTrapFrequencies(false);
+        traj.init_state(0.010);
+        traj.stats = statistics();
         double freq = physical.omega_ax0;
-    	traj[i].phys.noise_amp = 0.12 / simpar.dt;
-        traj[i].noiseFun = [threshhold, freq, tottime](double t)->double{
+    	traj.phys.noise_amp = 0.12 / simpar.dt;
+        traj.noiseFun = [threshhold, freq, tottime](double t)->double{
             if(t < tottime / 3)
                 return 0;
             else
                 return (sin(t * freq) > threshhold);
         };
-        traj[i].run(tottime);
+        traj.run(tottime);
 
 
         printf("%3d -- done\n", i);
         std::cerr << "----- RUN " << i << " -------" << std::endl;
-        traj[i].read_state(std::cerr);
+        traj.read_state(std::cerr);
         std::cerr << std::endl;
-    }
-
-    traj[0].print_history();
-    ensemble_statistics(traj);
+        if (i == 0)
+            traj.print_history();
+        #pragma omp critical 
+        {
+            results.collect_statistics(traj);
+        }
+    }    
+    results.ensemble_statistics();
 }
 
 int main(int , char** ) {
@@ -524,8 +539,8 @@ int main(int , char** ) {
 //    initial_state();
 //    fluorescence();
    // test_noise();
-//    laser_heating();
-     heat_engine();
+     laser_heating();
+//     heat_engine();
     return 0;
 }
 

@@ -72,7 +72,7 @@ struct Physical {
         tan_angle = std::tan(rad_angle);
         qDivM = consts::electronCharge / M;
         zk = R0 / tan_angle;  
-        std::cerr << "Setting zk to: " << zk << std::endl;
+        //std::cerr << "Setting zk to: " << zk << std::endl;
     }
     
     Physical() {        

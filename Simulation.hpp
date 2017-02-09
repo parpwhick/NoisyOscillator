@@ -32,10 +32,12 @@ enum class PotentialTypes {
 };
 
 struct statistics {
-    int points;
-    int allocated_size = 0;
-    int total_decays = 0;
+    size_t points = 0;
+    size_t allocated_size = 0;
+    size_t total_decays = 0;
     Eigen::MatrixXd table;
+	Eigen::MatrixXd table2;
+	size_t runs = 0;
 
     // averages
     Eigen::RowVector3d avg_x, avg_x2, avg_v, avg_v2;
@@ -83,6 +85,8 @@ public:
     // Perform statistics
     void do_statistics();
     void initializeMatrices();
+	void collect_statistics(const Simulation & traj);
+	void ensemble_statistics();
 
     // define the type of potential, switching below the accelerations below:
     PotentialTypes potential;
@@ -121,11 +125,11 @@ public:
     vec energies;
     vec omega;
     // current timestep
-    int N;
+    size_t N;
     // data written for later averaging
-    int printed;
+    size_t printed;
     // decays
-    int decays;
+    size_t decays;
     
     // acceleration at previous step
     vec a_t;
@@ -140,8 +144,6 @@ public:
     // Noise giving function
     std::function<double(double)> noiseFun = [](double ) -> double{return 1.0;};
 };
-
-void ensemble_statistics(std::vector<Simulation> &traj);
 
 // declare global parameters
 extern Physical physical;
