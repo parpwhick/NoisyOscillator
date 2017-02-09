@@ -487,7 +487,7 @@ void Simulation::ensemble_statistics() {
     stats.total_decays /= stats.runs;
     read_state();
 
-    print_table("table", stats.table, printed);
+    print_table("avg", stats.table, printed);
     print_table("avg2", stats.table2, printed);
 }
 
